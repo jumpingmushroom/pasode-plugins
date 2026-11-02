@@ -1,0 +1,31 @@
+// Example ~/.config/pasode/cli.json plugin entries, with every option at its default value.
+// Copy the entries you want into your own cli.json; a bare path ("~/pasode-plugins/plugins/projects") works too.
+{
+  "plugins": [
+    ["~/pasode-plugins/plugins/projects", {
+      // "root": "/srv/projects",          // where new projects and clones go; default: inferred from existing projects
+      "autoOpen": true                     // open the picker on launch outside a known project
+    }],
+    ["~/pasode-plugins/plugins/usage-bar", {
+      "providers": ["claude"],             // add "codex" to show both
+      "barWidth": 10,                      // cells per usage bar (3–30)
+      "session": true,                     // show in chats
+      "home": true,                        // show on the home screen
+      "host": true                         // host stats from the host-monitor Paseo plugin
+      // "hostDisks": ["/config", "/"],    // default: only the fullest disk
+      // "hostLabel": "nas"                // default: "Unraid" on Unraid, else the daemon's hostname
+    }],
+    ["~/pasode-plugins/plugins/attention", {
+      "session": true,                     // show the line in chats
+      "home": true,                        // short form on the home screen
+      "names": 2                           // chats named before "+N"; 0 for counts only
+    }],
+    ["~/pasode-plugins/plugins/sound", {
+      "reasons": ["finished", "question", "permission", "error"],
+      "bell": true                         // terminal bell while unfocused (Linux only)
+      // "volume": 0.6,                    // 0–1; default: full
+      // "player": ["pw-play", "paplay"],  // default on Linux; ["afplay"] on macOS
+      // "sounds": { "finished": "/usr/share/sounds/freedesktop/stereo/complete.oga" }
+    }]
+  ]
+}

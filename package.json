@@ -1,0 +1,11 @@
+{
+  "name": "pasode-plugins",
+  "private": true,
+  "description": "Plugins for pasode, the terminal client for the Paseo daemon",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "test": "bun test",
+    "typecheck": "scripts/typecheck.sh"
+  }
+}
