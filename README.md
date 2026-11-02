@@ -7,7 +7,7 @@ Plugins for [pasode](https://github.com/ragokan/pasode), the terminal client for
 | [projects](plugins/projects) | A project picker like the Paseo app's sidebar: pinned chats, every project with its chats (archived ones too), new chats and worktrees, new projects, and GitHub clones. Opens on launch outside a known project. |
 | [usage-bar](plugins/usage-bar) | A one-line bar with your Claude 5-hour and weekly usage, plus the daemon host's CPU, memory, and fullest disk. |
 | [attention](plugins/attention) | A line that appears when other chats need you, wait on an automatic resume, or run subagents, with a key to jump to the next one. |
-| [prompts](plugins/prompts) | Your Prompt Manager library: clickable buttons at the top of each chat, a picker, and a `/p:<name>` command per prompt, with variables filled in before sending. |
+| [prompts](plugins/prompts) | Your Prompt Manager library: clickable buttons at the top of each chat, a picker that also creates and edits prompts in your editor, and a `/p:<name>` command per prompt, with variables filled in before sending. |
 | [sound](plugins/sound) | A sound when a chat you have open finishes, asks a question, waits for a permission, or fails, plus a terminal bell for window urgency. |
 
 The plugins suit a remote daemon especially well: the projects picker starts chats in the daemon's folders, which don't exist on the machine that runs pasode.
