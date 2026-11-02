@@ -26,6 +26,14 @@
       // "volume": 0.6,                    // 0–1; default: full
       // "player": ["pw-play", "paplay"],  // default on Linux; ["afplay"] on macOS
       // "sounds": { "finished": "/usr/share/sounds/freedesktop/stereo/complete.oga" }
+    }],
+    ["~/pasode-plugins/plugins/prompts", {
+      "tag": "quick",                      // prompts with this tag become buttons; while none has it, all do
+      // "buttons": ["approved", "yes"],   // explicit button list, overrides the tag
+      "row": true,                         // the button row at the top of chats
+      "commands": true,                    // /p:<id> per prompt
+      "prefix": "p:",
+      "plugin": "paseo-prompt-manager"     // Prompt Manager's plugin id on the daemon
     }]
   ]
 }
