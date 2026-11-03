@@ -14,6 +14,8 @@ The picker has three sections:
 - **Pinned**: your pinned chats, the same ones as the **Pinned** group in pasode's session switcher (`ctrl+x l`). Pins are Paseo's own, so they match the desktop and phone apps. Enter opens the chat.
 - **Projects**: every project, most recently used first, with its chat count.
 
+To remove a project from Paseo, select it in **Projects** and press `ctrl+d` twice. Paseo archives the project's workspaces and drops the project from its list, in every Paseo app. The project's folder stays on disk, so its files are kept.
+
 Pick a project to see:
 
 - **← All projects**, which returns to the list. `esc` does the same; a second `esc` closes the picker.

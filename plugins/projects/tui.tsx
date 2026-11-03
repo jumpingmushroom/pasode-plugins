@@ -1,6 +1,6 @@
 // Projects picker for pasode, like the Paseo desktop sidebar's per-project "+":
 // ctrl+x p (or /projects) lists pinned chats (Paseo's workspace pins) and the daemon's projects; pick one to open one of its chats, start a new one, start one in a new git worktree,
-// or create a new project / clone one from GitHub. In a project's chats, ctrl+d twice deletes an archived chat for good. Paths are the daemon's (e.g. /srv/projects/<name>),
+// or create a new project / clone one from GitHub. ctrl+d twice removes a project from Paseo (its folder stays); in a project's chats, it deletes an archived chat for good. Paths are the daemon's (e.g. /srv/projects/<name>),
 // so this works with a remote daemon whose folders don't exist on this machine.
 //
 // Options (cli.json: ["~/pasode-plugins/plugins/projects", { "root": "/srv/projects" }]):
@@ -8,15 +8,16 @@
 //   autoOpen  false stops the picker opening on launch outside a known project (default true).
 //   cloneProtocol  "https" (default) or "ssh" for owner/repo clones; a pasted URL keeps its own protocol.
 //   openAfterArchive  false stops the picker opening when archiving the open chat sends you home (default true).
-import { createEffect, createSignal, on } from "solid-js"
+import { createEffect, createSignal, on, type JSX } from "solid-js"
 import type { PasodePlugin } from "@pasode/host"
-import { ago, deletion, leftByArchive, chatFooter, clonePath, cloneProtocol, pinnedRows, inferRoot, insideProject, parseRepo, projectChats, projectRows, shortPath, validProjectName, type Chat, type ChatAgent, type ChatWorkspace, type Project, type ProjectRow } from "./model"
+import { ago, deletion, removedProjectMessage, leftByArchive, chatFooter, clonePath, cloneProtocol, pinnedRows, inferRoot, insideProject, parseRepo, projectChats, projectRows, shortPath, validProjectName, type Chat, type ChatAgent, type ChatWorkspace, type Project, type ProjectRow } from "./model"
 
 type Pick =
   | { kind: "project"; row: ProjectRow }
   | { kind: "new" }
   | { kind: "clone" }
   | { kind: "pinned"; id: string }
+  | { kind: "remove"; row: ProjectRow }
 
 type Choice = "chat" | "worktree" | "back" | { open: string; archived: boolean } | { startIn: string } | { remove: { agentId?: string; workspaceId: string } }
 
@@ -88,36 +89,86 @@ export default {
       )
     }
 
+    /** Shows a dialog whose content calls `done` with the choice; esc resolves undefined. Like dialog.select, with actions. */
+    function choose<T>(render: (done: (value?: T) => void) => JSX.Element) {
+      return new Promise<T | undefined>((resolve) => {
+        let finished = false
+        const finish = (value?: T) => {
+          if (finished) return
+          finished = true
+          resolve(value)
+          dialog.clear()
+        }
+        dialog.replace(() => render(finish), "large", () => finish(undefined))
+      })
+    }
+
     async function openProjects(data?: Data, from?: ProjectRow) {
       data ??= await load().catch((error) => void showError(error))
       if (!data) return
       const { rows, root } = data
-      // DialogSelect matches `current` by identity, so the rows' option values are built once per load.
-      const picks = new Map(rows.map((row) => [row.id, { kind: "project", row } as Pick]))
-      const picked = await dialog.select<Pick>({
-        title: "Projects",
-        placeholder: "Search pinned chats and projects",
-        size: "large",
-        current: from ? picks.get(from.id) : undefined,
-        options: [
-          { title: "New project…", description: root ? `empty folder in ${root}` : "empty folder", category: "Add", value: { kind: "new" } },
-          { title: "Clone from GitHub…", description: root ? `into ${root}` : undefined, category: "Add", value: { kind: "clone" } },
-          ...pinned().map((chat) => ({ title: chat.title, footer: chat.footer, category: "Pinned", value: { kind: "pinned", id: chat.id } as Pick })),
-          ...rows.map((row) => ({
-            title: row.name,
-            // Only show the folder when it says something the name doesn't.
-            description: shortPath(row.root, root) === row.name ? undefined : shortPath(row.root, root),
-            footer: `${row.chats ? `${row.chats} chat${row.chats === 1 ? "" : "s"} · ` : ""}${ago(row.lastActive)}`,
-            category: "Projects",
-            value: picks.get(row.id)!,
-          })),
-        ],
-      })
+      const picked = await choose<Pick>((done) => <ProjectList rows={rows} root={root} from={from} onDone={done} />)
       if (!picked) return
       if (picked.kind === "new") return void newProject(root)
       if (picked.kind === "clone") return void cloneProject(root)
       if (picked.kind === "pinned") return ctx.paseo.navigate(picked.id)
+      if (picked.kind === "remove") return void removeProject(picked.row)
       return void projectMenu(picked.row, data)
+    }
+
+    /** The picker's main list; ctrl+d twice on a project removes it from Paseo (its folder stays). */
+    function ProjectList(props: { rows: ProjectRow[]; root?: string; from?: ProjectRow; onDone: (pick?: Pick) => void }) {
+      const [armed, setArmed] = createSignal<string>()
+      // DialogSelect matches `current` by identity, so the rows' option values are built once per load.
+      const picks = new Map(props.rows.map((row) => [row.id, { kind: "project", row } as Pick]))
+      const root = props.root
+      return (
+        <ctx.ui.components.DialogSelect<Pick>
+          title="Projects"
+          placeholder="Search pinned chats and projects"
+          current={props.from ? picks.get(props.from.id) : undefined}
+          options={[
+            { title: "New project…", description: root ? `empty folder in ${root}` : "empty folder", category: "Add", value: { kind: "new" } },
+            { title: "Clone from GitHub…", description: root ? `into ${root}` : undefined, category: "Add", value: { kind: "clone" } },
+            ...pinned().map((chat) => ({ title: chat.title, footer: chat.footer, category: "Pinned", value: { kind: "pinned", id: chat.id } as Pick })),
+            ...props.rows.map((row) => ({
+              title: row.name,
+              bg: armed() === row.id ? ctx.theme.error : undefined,
+              // Only show the folder when it says something the name doesn't.
+              description: shortPath(row.root, root) === row.name ? undefined : shortPath(row.root, root),
+              footer: armed() === row.id ? "ctrl+d again to remove · folder stays" : `${row.chats ? `${row.chats} chat${row.chats === 1 ? "" : "s"} · ` : ""}${ago(row.lastActive)}`,
+              category: "Projects",
+              value: picks.get(row.id)!,
+            })),
+          ]}
+          onMove={() => setArmed(undefined)}
+          onSelect={(option) => props.onDone(option.value)}
+          actions={[
+            {
+              label: "ctrl+d",
+              title: "remove project",
+              match: (key) => key.ctrl && key.name === "d",
+              run: (option) => {
+                if (option.value.kind !== "project") return
+                const { row } = option.value
+                if (armed() !== row.id) return setArmed(row.id)
+                props.onDone({ kind: "remove", row })
+              },
+            },
+          ]}
+        />
+      )
+    }
+
+    /** Removes a project from Paseo: the daemon archives its workspaces and keeps the folder. Then shows the list again. */
+    async function removeProject(row: ProjectRow) {
+      try {
+        const result = await daemon.removeProject(row.id)
+        notify(removedProjectMessage(row.name, result.removedWorkspaceIds?.length ?? 0), "success")
+      } catch (error) {
+        showError(error)
+      }
+      void openProjects()
     }
 
     async function projectMenu(row: ProjectRow, data: Data) {
@@ -127,16 +178,7 @@ export default {
       })
       // Live sessions first: they carry current status; history adds the archived ones the live list leaves out.
       const chats = projectChats(row.id, data.workspaces, [...Object.values(ctx.paseo.agents), ...history], row.root)
-      const choice = await new Promise<Choice | undefined>((resolve) => {
-        let done = false
-        const finish = (value?: Choice) => {
-          if (done) return
-          done = true
-          resolve(value)
-          dialog.clear()
-        }
-        dialog.replace(() => <ChatMenu row={row} chats={chats} onDone={finish} />, "large", () => finish(undefined))
-      })
+      const choice = await choose<Choice>((done) => <ChatMenu row={row} chats={chats} onDone={done} />)
       if (typeof choice === "object" && "remove" in choice) return void deleteChat(choice.remove, row)
       // Esc in a project returns to the list (with this project highlighted); esc there closes.
       if (!choice || choice === "back") return void openProjects(data, row)

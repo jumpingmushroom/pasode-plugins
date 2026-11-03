@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test"
-import { ago, deletion, leftByArchive, chatFooter, pinnedRows, inferRoot, insideProject, parseRepo, projectChats, projectRows, shortPath, validProjectName, type Project, cloneProtocol, clonePath } from "./model"
+import { ago, removedProjectMessage, deletion, leftByArchive, chatFooter, pinnedRows, inferRoot, insideProject, parseRepo, projectChats, projectRows, shortPath, validProjectName, type Project, cloneProtocol, clonePath } from "./model"
 
 test("projectChats lists every workspace: live, archived, and empty ones, newest first", () => {
   const chats = projectChats(
@@ -179,4 +179,10 @@ test("deletion: an archived chat deletes its session and archives its workspace;
   expect(deletion({ title: "a", state: "idle", agentId: "x", workspaceId: "w" })).toBeUndefined()
   expect(deletion({ title: "a", state: "running", agentId: "x", workspaceId: "w" })).toBeUndefined()
   expect(deletion({ title: "a", state: "needs input", agentId: "x", workspaceId: "w" })).toBeUndefined()
+})
+
+test("removedProjectMessage names the project, the archived workspaces, and that the folder stays", () => {
+  expect(removedProjectMessage("shop", 0)).toBe('Removed "shop" from Paseo. Its folder stays on disk.')
+  expect(removedProjectMessage("shop", 1)).toBe('Removed "shop" from Paseo and archived 1 workspace. Its folder stays on disk.')
+  expect(removedProjectMessage("shop", 3)).toBe('Removed "shop" from Paseo and archived 3 workspaces. Its folder stays on disk.')
 })

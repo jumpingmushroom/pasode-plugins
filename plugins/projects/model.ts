@@ -200,3 +200,9 @@ export async function leftByArchive(deps: { live: () => boolean; home: () => boo
     await deps.sleep(stepMs)
   }
 }
+
+/** The toast after removing a project: Paseo forgets it and archives its workspaces, but never deletes the folder. */
+export function removedProjectMessage(name: string, archived: number) {
+  const workspaces = archived ? ` and archived ${archived} workspace${archived === 1 ? "" : "s"}` : ""
+  return `Removed "${name}" from Paseo${workspaces}. Its folder stays on disk.`
+}
