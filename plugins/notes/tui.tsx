@@ -23,7 +23,7 @@ import os from "node:os"
 import path from "node:path"
 import { createSignal } from "solid-js"
 import type { PasodePlugin } from "@pasode/host"
-import { formatEditorText, noteRows, parseEditorText, readOptions, webUrl, type DaemonProject, type NoteItem } from "./model"
+import { formatEditorText, noteRows, parseEditorText, readOptions, sameNote, webUrl, type DaemonProject, type NoteItem } from "./model"
 import { createNotes, push } from "./notes"
 import { createTrilium } from "./trilium"
 
@@ -130,12 +130,17 @@ export default {
     }
 
     /** Edits in $EDITOR and saves; on failure the draft file stays and the error says where. */
-    async function write(start: string, save: (note: { title: string; body: string }) => Promise<unknown>, verb: string) {
+    async function write(start: string, save: (note: { title: string; body: string }) => Promise<unknown>, verb: string, original?: { title: string; body: string }) {
       const draft = await editInEditor(start)
       const note = parseEditorText(draft.text)
       if (!note) {
         await draft.done()
         return notify("Empty note, nothing saved", "warning")
+      }
+      // Saving rewrites the note as plain paragraphs, so an untouched note keeps the formatting it has in Trilium.
+      if (original && sameNote(note, original)) {
+        await draft.done()
+        return notify("No changes", "info")
       }
       try {
         await save(note)
@@ -147,7 +152,7 @@ export default {
     }
 
     const addNote = (project: Project) => write("", (note) => ready()!.add(project.noteId, note), "Saved")
-    const editNote = (note: NoteItem) => write(formatEditorText(note), (next) => ready()!.update(note.noteId, next), "Saved")
+    const editNote = (note: NoteItem) => write(formatEditorText(note), (next) => ready()!.update(note.noteId, next), "Saved", note)
 
     // ── Chat ──
 
@@ -200,7 +205,7 @@ export default {
         else notify(`Started "${note.title}"`, "success")
       } catch (error) {
         showError(error)
-        void openList(project)
+        void openList(project).catch(showError)
       }
     }
 
@@ -219,7 +224,7 @@ export default {
     function List(props: { project: Project; notes: NoteItem[] }) {
       const [confirm, setConfirm] = createSignal<string>()
       const byId = new Map(props.notes.map((n) => [n.noteId, n]))
-      const reopen = () => void openList(props.project)
+      const reopen = () => void openList(props.project).catch(showError)
       const run = (work: () => Promise<unknown>) => {
         dialog.clear()
         void work()

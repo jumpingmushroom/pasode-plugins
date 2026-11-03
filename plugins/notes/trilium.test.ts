@@ -100,3 +100,20 @@ test("labelsOf keeps labels only", () => {
   ])
   expect(labelsOf(n)).toEqual({ paseoPath: "/srv/projects/foo" })
 })
+
+test("an HTTP error names the Trilium URL", async () => {
+  const { trilium } = fake([json({ status: 401, code: "NOT_AUTHENTICATED", message: "Not authenticated" }, 401)])
+  await expect(trilium.note("a")).rejects.toThrow(`${URL}/notes/a`)
+})
+
+test("a request that hangs times out with a Trilium message", async () => {
+  const fetch = ((_: string, init: RequestInit = {}) =>
+    new Promise((_, reject) => init.signal?.addEventListener("abort", () => reject(init.signal!.reason)))) as unknown as typeof globalThis.fetch
+  const trilium = createTrilium({ url: URL, token: "tok", fetch, timeoutMs: 20 })
+  await expect(trilium.note("a")).rejects.toThrow(`Trilium unreachable at ${URL}: timed out`)
+})
+
+test("a non-JSON reply (a login page) names Trilium and the URL", async () => {
+  const { trilium } = fake([new Response("<html>login</html>", { status: 200 })])
+  await expect(trilium.note("a")).rejects.toThrow(`Trilium sent a non-JSON reply from ${URL}/notes/a`)
+})

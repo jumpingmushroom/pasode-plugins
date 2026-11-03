@@ -60,7 +60,7 @@ function decodeEntities(value: string) {
     .replace(/&(#x[0-9a-f]+|#\d+|[a-z]+);/gi, (whole, name: string) => {
       if (name[0] === "#") {
         const code = name[1]?.toLowerCase() === "x" ? parseInt(name.slice(2), 16) : parseInt(name.slice(1), 10)
-        return Number.isFinite(code) ? String.fromCodePoint(code) : whole
+        return Number.isFinite(code) && code <= 0x10ffff ? String.fromCodePoint(code) : whole
       }
       return ENTITIES[name.toLowerCase()] ?? whole
     })
@@ -94,6 +94,19 @@ export function textToHtml(text: string): string {
 
 const stripTags = (value: string) => value.replace(/<[^>]*>/g, "")
 
+/** One list item: the marker on the first line, continuation lines (nested lists, extra paragraphs) indented under it. */
+function listItem(marker: string, inner: string) {
+  const lines = stripTags(inner.replace(/<\/p>\s*<p[^>]*>/gi, "\n").replace(/<br\s*\/?>/gi, "\n"))
+    .split("\n")
+    .map((line) => line.trimEnd())
+    .filter((line) => line.trim() !== "")
+  const pad = " ".repeat(marker.length + 1)
+  return lines.map((line, i) => (i === 0 ? `${marker} ${line.trimStart()}` : pad + line)).join("\n")
+}
+
+/** Innermost list first, so nested lists keep their own items and indentation. */
+const INNER_LIST = /<(ul|ol)\b[^>]*>((?:(?!<(?:ul|ol)\b)[\s\S])*?)<\/\1>/i
+
 /** Readable prompt text from a Trilium text note, including notes written in its web editor. */
 export function htmlToText(html: string): string {
   const code: string[] = []
@@ -103,13 +116,23 @@ export function htmlToText(html: string): string {
     return `\n\n\u0000${code.length - 1}\u0000\n\n`
   })
   text = text
-    .replace(/<h([1-6])[^>]*>([\s\S]*?)<\/h\1>/gi, (_, level: string, inner: string) => `\n\n${"#".repeat(Number(level))} ${stripTags(inner).trim()}\n\n`)
-    .replace(/<(ul|ol)[^>]*>([\s\S]*?)<\/\1>/gi, (_, kind: string, inner: string) => {
-      const items = [...inner.matchAll(/<li[^>]*>([\s\S]*?)<\/li>/gi)].map((m, i) => `${kind.toLowerCase() === "ol" ? `${i + 1}.` : "-"} ${stripTags((m[1] ?? "").replace(/<br\s*\/?>/gi, " ")).trim()}`)
-      return `\n\n${items.join("\n")}\n\n`
+    .replace(/<code[^>]*>([\s\S]*?)<\/code>/gi, (_, inner: string) => "`" + stripTags(inner) + "`")
+    .replace(/<a\b[^>]*?href="([^"]*)"[^>]*>([\s\S]*?)<\/a>/gi, (_, href: string, inner: string) => {
+      const label = stripTags(inner).trim()
+      return !label || decodeEntities(label) === decodeEntities(href) ? href : `${label} (${href})`
     })
-    .replace(/<br\s*\/?>/gi, "\n")
-    .replace(/<\/(p|div|blockquote)>/gi, "\n\n")
+    .replace(/<tr\b[^>]*>([\s\S]*?)<\/tr>/gi, (_, row: string) => {
+      const cells = [...row.matchAll(/<t[dh]\b[^>]*>([\s\S]*?)<\/t[dh]>/gi)].map((m) => stripTags((m[1] ?? "").replace(/<\/p>\s*<p[^>]*>|<br\s*\/?>/gi, " ")).replace(/\s+/g, " ").trim())
+      return cells.join(" | ") + "\n"
+    })
+    .replace(/<\/?table\b[^>]*>/gi, "\n\n")
+    .replace(/<h([1-6])[^>]*>([\s\S]*?)<\/h\1>/gi, (_, level: string, inner: string) => `\n\n${"#".repeat(Number(level))} ${stripTags(inner).trim()}\n\n`)
+  for (let match = INNER_LIST.exec(text); match; match = INNER_LIST.exec(text)) {
+    const ordered = (match[1] ?? "").toLowerCase() === "ol"
+    const items = [...(match[2] ?? "").matchAll(/<li\b[^>]*>([\s\S]*?)<\/li>/gi)].map((m, i) => listItem(ordered ? `${i + 1}.` : "-", m[1] ?? ""))
+    text = text.slice(0, match.index) + `\n\n${items.join("\n")}\n\n` + text.slice(match.index + match[0].length)
+  }
+  text = text.replace(/<br\s*\/?>/gi, "\n").replace(/<\/(p|div|blockquote)>/gi, "\n\n")
   text = decodeEntities(stripTags(text))
     .split("\n")
     .map((line) => line.trimEnd())
@@ -117,6 +140,12 @@ export function htmlToText(html: string): string {
     .replace(/\n{3,}/g, "\n\n")
     .trim()
   return text.replace(/\u0000(\d+)\u0000/g, (_, i: string) => code[Number(i)] ?? "")
+}
+
+/** Whether an edit changed nothing, so an untouched note keeps its Trilium formatting. */
+export function sameNote(a: { title: string; body: string }, b: { title: string; body: string }) {
+  const body = (value: string) => value.replace(/\r\n?/g, "\n").trimEnd()
+  return a.title.trim() === b.title.trim() && body(a.body) === body(b.body)
 }
 
 // ── Projects ──
@@ -131,7 +160,8 @@ export function matchProject(project: DaemonProject, candidates: Candidate[], pa
   const labelled = candidates.find((c) => c.labels[pathLabel] === project.root)
   if (labelled) return { noteId: labelled.noteId }
   const names = new Set([loose(project.name), loose(project.root.replace(/\/+$/, "").split("/").pop() ?? "")].filter(Boolean))
-  const matches = candidates.filter((c) => names.has(loose(c.title)))
+  // A note already linked to another folder is never reused by title: two folders can share a name.
+  const matches = candidates.filter((c) => !c.labels[pathLabel] && names.has(loose(c.title)))
   const [only] = matches
   if (only && matches.length === 1) return { noteId: only.noteId }
   return { choices: [...matches, ...candidates.filter((c) => !matches.includes(c))] }

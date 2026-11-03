@@ -35,7 +35,8 @@ export const labelsOf = (note: TNote) => Object.fromEntries(note.attributes.filt
 
 export const quote = (value: string) => `'${value.replace(/\\/g, "\\\\").replace(/'/g, "\\'")}'`
 
-export function createTrilium(config: { url: string; token: string; fetch?: typeof fetch }): Trilium {
+/** `timeoutMs` (default 10 s) bounds each request, so an unreachable host fails fast instead of hanging the dialog. */
+export function createTrilium(config: { url: string; token: string; fetch?: typeof fetch; timeoutMs?: number }): Trilium {
   const base = config.url.replace(/\/+$/, "")
   const doFetch = config.fetch ?? fetch
 
@@ -51,9 +52,11 @@ export function createTrilium(config: { url: string; token: string; fetch?: type
     }
     let response: Response
     try {
-      response = await doFetch(`${base}${path}`, { method, headers, body: payload })
+      response = await doFetch(`${base}${path}`, { method, headers, body: payload, signal: AbortSignal.timeout(config.timeoutMs ?? 10_000) })
     } catch (error) {
-      throw new Error(`Trilium unreachable at ${base}: ${error instanceof Error ? error.message : error}`)
+      const name = error instanceof Error || error instanceof DOMException ? error.name : ""
+      const reason = name === "TimeoutError" || name === "AbortError" ? "timed out" : error instanceof Error ? error.message : String(error)
+      throw new Error(`Trilium unreachable at ${base}: ${reason}`)
     }
     if (!response.ok) {
       const text = await response.text().catch(() => "")
@@ -62,18 +65,28 @@ export function createTrilium(config: { url: string; token: string; fetch?: type
         const parsed = JSON.parse(text)
         if (parsed?.code) detail = `${parsed.code}: ${parsed.message ?? ""}`.trim()
       } catch {}
-      throw new EtapiError(response.status, `Trilium ${method} ${path.split("?")[0]} failed (${response.status}) ${detail}`)
+      throw new EtapiError(response.status, `Trilium ${method} ${base}${path.split("?")[0]} failed (${response.status}) ${detail}`)
     }
     return response
   }
 
+  /** A JSON body; an HTML reply (such as a login page in front of Trilium) gets an error that says where it came from. */
+  async function json<T>(method: string, path: string, body?: { json: unknown }): Promise<T> {
+    const text = await (await call(method, path, body)).text()
+    try {
+      return JSON.parse(text) as T
+    } catch {
+      throw new Error(`Trilium sent a non-JSON reply from ${base}${path.split("?")[0]}`)
+    }
+  }
+
   const children = async (parentId: string, search = "note.noteId != ''") => {
     const query = `search=${encodeURIComponent(search)}&ancestorNoteId=${encodeURIComponent(parentId)}&ancestorDepth=eq1`
-    const result = (await (await call("GET", `/notes?${query}`)).json()) as { results?: TNote[] }
+    const result = await json<{ results?: TNote[] }>("GET", `/notes?${query}`)
     return result.results ?? []
   }
 
-  const note = async (id: string) => (await (await call("GET", `/notes/${encodeURIComponent(id)}`)).json()) as TNote
+  const note = (id: string) => json<TNote>("GET", `/notes/${encodeURIComponent(id)}`)
 
   async function addLabel(id: string, name: string, value = "") {
     await call("POST", "/attributes", { json: { noteId: id, type: "label", name, value } })
@@ -101,7 +114,7 @@ export function createTrilium(config: { url: string; token: string; fetch?: type
       await call("PUT", `/notes/${encodeURIComponent(id)}/content`, { text: html })
     },
     async create(parentId, title, html, labels = {}) {
-      const result = (await (await call("POST", "/create-note", { json: { parentNoteId: parentId, title, type: "text", content: html } })).json()) as { note: TNote }
+      const result = await json<{ note: TNote }>("POST", "/create-note", { json: { parentNoteId: parentId, title, type: "text", content: html } })
       for (const [name, value] of Object.entries(labels)) await addLabel(result.note.noteId, name, value)
       return result.note
     },

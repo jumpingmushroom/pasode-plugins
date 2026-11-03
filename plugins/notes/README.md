@@ -36,7 +36,7 @@ In the notes list:
 
 - **Enter** starts a new chat in the project with the note's prompt, sends it, names the chat after the note, and marks the note done. Done notes leave the list but stay in Trilium.
 - **New note…** writes a note in your editor.
-- `ctrl+e` edits the note in your editor.
+- `ctrl+e` edits the note in your editor. Saving an edit stores the note as plain paragraphs, so it drops formatting such as links and tables that you added in Trilium. If you change nothing, the note stays as it was.
 - `ctrl+d` deletes the note. Press it twice.
 - `ctrl+o` opens the note in Trilium's web app.
 - `tab` switches to another project.
@@ -48,9 +48,9 @@ The chat uses the provider and model on pasode's home screen and pasode's `sessi
 A chat's project maps to a Trilium project note as follows:
 
 1. The plugin looks for a child of the projects note with a `paseoPath` label that equals the project's folder on the daemon.
-2. If no child has the label, the plugin compares the project's name and folder name with the children's titles, ignoring case, spaces, hyphens, and underscores. It uses a match only when exactly one child matches.
+2. If no child has the label, the plugin compares the project's name and folder name with the titles of children that have no `paseoPath` label yet, ignoring case, spaces, hyphens, and underscores. It uses a match only when exactly one child matches.
 3. If nothing matches, the plugin asks you to pick a child or create a project note.
-4. The plugin saves the result as the `paseoPath` label, so later lookups skip steps 2 and 3.
+4. When you pick or create a note in step 3, the plugin saves your choice as the `paseoPath` label, so later lookups skip steps 2 and 3.
 
 Notes go in a child of the project note named by `folder` (`Notes` by default). The plugin creates that child the first time you use a project. To keep notes directly under the project note, set `folder` to `""`. The plugin then lists only the notes it labeled `pasodeNote`, so other children, such as documentation, stay out of the list.
 

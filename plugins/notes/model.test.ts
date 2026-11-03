@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test"
-import { formatEditorText, htmlToText, matchProject, noteRows, parseEditorText, readOptions, textToHtml, webUrl } from "./model"
+import { formatEditorText, htmlToText, matchProject, noteRows, parseEditorText, readOptions, sameNote, textToHtml, webUrl } from "./model"
 
 test("readOptions: defaults, env url and token, bad types fall back", () => {
   const o = readOptions({ projects: "Work/Projects", folder: 3 }, { TRILIUM_URL: "https://notes.example.com/etapi/", TRILIUM_TOKEN: "t" })
@@ -71,4 +71,29 @@ test("noteRows: newest first, description is the first non-empty body line", () 
 
 test("webUrl strips /etapi", () => {
   expect(webUrl("https://notes.example.com/etapi", "abc123")).toBe("https://notes.example.com/#root/abc123")
+})
+
+test("htmlToText keeps nested lists, multi-paragraph items, links, inline code and tables", () => {
+  expect(htmlToText("<ul><li>a<ul><li>b</li><li>c</li></ul></li><li>d</li></ul>")).toBe("- a\n  - b\n  - c\n- d")
+  expect(htmlToText("<ol><li><p>two</p><p>more</p></li></ol>")).toBe("1. two\n   more")
+  expect(htmlToText('<p>See <a href="https://x.dev/issue/4?a=1&amp;b=2">the issue</a> and <a href="https://x.dev">https://x.dev</a>.</p>')).toBe(
+    "See the issue (https://x.dev/issue/4?a=1&b=2) and https://x.dev.",
+  )
+  expect(htmlToText("<p>Run <code>bun test</code> first.</p>")).toBe("Run `bun test` first.")
+  expect(htmlToText("<table><tbody><tr><td>a</td><td><p>b</p></td></tr><tr><td>c</td><td>d</td></tr></tbody></table>")).toBe("a | b\nc | d")
+})
+
+test("htmlToText leaves an out-of-range numeric entity as is", () => {
+  expect(htmlToText("<p>&#99999999; ok</p>")).toBe("&#99999999; ok")
+})
+
+test("sameNote ignores trailing whitespace and line-ending differences", () => {
+  expect(sameNote({ title: "T", body: "a\nb" }, { title: "T ", body: "a\r\nb\n" })).toBe(true)
+  expect(sameNote({ title: "T", body: "a" }, { title: "T", body: "b" })).toBe(false)
+})
+
+test("matchProject doesn't title-match a note already linked to another folder", () => {
+  const p = { root: "/srv/b/api", name: "api" }
+  const linked = { noteId: "a", title: "api", labels: { paseoPath: "/srv/a/api" } }
+  expect(matchProject(p, [linked], "paseoPath")).toEqual({ choices: [linked] })
 })
