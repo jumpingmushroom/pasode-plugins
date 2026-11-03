@@ -33,7 +33,7 @@ export type Trilium = {
 
 export const labelsOf = (note: TNote) => Object.fromEntries(note.attributes.filter((a) => a.type === "label").map((a) => [a.name, a.value]))
 
-const quote = (value: string) => `'${value.replace(/\\/g, "\\\\").replace(/'/g, "\\'")}'`
+export const quote = (value: string) => `'${value.replace(/\\/g, "\\\\").replace(/'/g, "\\'")}'`
 
 export function createTrilium(config: { url: string; token: string; fetch?: typeof fetch }): Trilium {
   const base = config.url.replace(/\/+$/, "")
