@@ -33,22 +33,52 @@ export function readOptions(raw: Record<string, unknown>, env: Record<string, st
   }
 }
 
-// ── Editor file: line 1 is the title, the rest is the prompt ──
+// ── Editor file: a template like the prompts plugin's, with the title above "---" and the prompt below ──
 
-export function parseEditorText(text: string): { title: string; body: string } | undefined {
-  const lines = text.replace(/\r\n?/g, "\n").split("\n")
-  const at = lines.findIndex((line) => line.trim() !== "")
-  if (at < 0) return undefined
-  const body = lines
-    .slice(at + 1)
+const EDITOR_HELP = '# Write the title after "title:" and the prompt below the --- line. Lines above --- that start with # are ignored.'
+const MAX_TITLE = 80
+
+/** Blank lines off the start, whitespace off the end. */
+const trimBody = (lines: string[]) =>
+  lines
     .join("\n")
     .replace(/^(?:[ \t]*\n)+/, "")
     .trimEnd()
-  return { title: (lines[at] ?? "").trim(), body }
+
+/**
+ * Reads the editor file. The template's header (comments, blank lines and "key: value" lines above the first "---")
+ * holds the title; everything below it is the prompt, as written. A file without that header uses its first line as
+ * the title. An empty title takes the prompt's first line; an empty file, or a template left empty, is undefined.
+ */
+export function parseEditorText(text: string): { title: string; body: string } | undefined {
+  const lines = text.replace(/\r\n?/g, "\n").split("\n")
+  const divider = lines.findIndex((line) => line.trim() === "---")
+  const header = divider < 0 ? [] : lines.slice(0, divider)
+  const field = /^([A-Za-z]+)\s*:(.*)$/
+  const template =
+    divider >= 0 && header.every((line) => !line.trim() || line.trim().startsWith("#") || field.test(line.trim())) && header.some((line) => field.test(line.trim()))
+  if (!template) {
+    const at = lines.findIndex((line) => line.trim() !== "")
+    if (at < 0) return undefined
+    return { title: (lines[at] ?? "").trim(), body: trimBody(lines.slice(at + 1)) }
+  }
+  let title = ""
+  for (const line of header) {
+    const match = field.exec(line.trim())
+    if (match && match[1]!.toLowerCase() === "title") title = match[2]!.trim()
+  }
+  const body = trimBody(lines.slice(divider + 1))
+  if (!title) {
+    const first = body.split("\n").find((line) => line.trim() !== "")?.trim()
+    if (!first) return undefined
+    title = first.length > MAX_TITLE ? first.slice(0, MAX_TITLE - 1) + "…" : first
+  }
+  return { title, body }
 }
 
+/** The editor template; an empty note gives the blank template for a new note. */
 export function formatEditorText(note: { title: string; body: string }) {
-  return note.body ? `${note.title}\n\n${note.body}\n` : `${note.title}\n`
+  return `${EDITOR_HELP}\ntitle: ${note.title}\n---\n${note.body ? `${note.body}\n` : ""}`
 }
 
 // ── Trilium HTML ⇄ plain text ──

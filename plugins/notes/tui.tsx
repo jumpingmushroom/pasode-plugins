@@ -3,7 +3,7 @@
 // note done. Notes live in Trilium (not in the project), so they never end up in git.
 //
 // ctrl+x a (or /notes) lists the current chat's project's notes; on the home screen it asks for the project first.
-// ctrl+x k (or /note) writes a new note in $EDITOR: the first line is the title, the rest is the prompt.
+// ctrl+x k (or /note) writes a new note in $EDITOR from a template: the title after "title:", the prompt below "---".
 // In the list: enter starts the chat ("New note…" writes one); ctrl+e edit; ctrl+d delete (press twice); ctrl+o open in Trilium;
 // tab another project. The sidebar lists the open chat's project's notes; click one to open it in the list.
 //
@@ -167,7 +167,7 @@ export default {
       }
     }
 
-    const addNote = (project: Project) => write("", (note) => ready()!.add(project.noteId, note), "Saved")
+    const addNote = (project: Project) => write(formatEditorText({ title: "", body: "" }), (note) => ready()!.add(project.noteId, note), "Saved")
     const editNote = (note: NoteItem) => write(formatEditorText(note), (next) => ready()!.update(note.noteId, next), "Saved", note)
 
     // ── Chat ──

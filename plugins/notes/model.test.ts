@@ -24,10 +24,35 @@ test("parseEditorText: first non-empty line is the title, CRLF and blank lines t
   expect(parseEditorText("  \n\n")).toBeUndefined()
 })
 
-test("formatEditorText round-trips through parseEditorText", () => {
-  const note = { title: "Gitea clone", body: "Para one\n\n```ts\nconst a = 1\n```" }
+const HELP = '# Write the title after "title:" and the prompt below the --- line. Lines above --- that start with # are ignored.'
+
+test("formatEditorText writes the template: help, title field, ---, prompt", () => {
+  expect(formatEditorText({ title: "", body: "" })).toBe(`${HELP}\ntitle: \n---\n`)
+  expect(formatEditorText({ title: "Sidebar notes", body: "Line one\nLine two" })).toBe(`${HELP}\ntitle: Sidebar notes\n---\nLine one\nLine two\n`)
+})
+
+test("formatEditorText round-trips through parseEditorText, with --- and # headings in the prompt", () => {
+  const note = { title: "Gitea clone", body: "# Plan\n\nPara one\n---\n```ts\nconst a = 1\n```" }
   expect(parseEditorText(formatEditorText(note))).toEqual(note)
-  expect(formatEditorText({ title: "T", body: "" })).toBe("T\n")
+})
+
+test("parseEditorText: an untouched new-note template cancels", () => {
+  expect(parseEditorText(formatEditorText({ title: "", body: "" }))).toBeUndefined()
+  expect(parseEditorText(`${HELP}\r\ntitle:   \r\n---\r\n\r\n  \r\n`)).toBeUndefined()
+})
+
+test("parseEditorText: an empty title takes the prompt's first line, cut to 80 characters", () => {
+  expect(parseEditorText(`${HELP}\ntitle:\n---\n\nFix the flicker\nmore detail\n`)).toEqual({ title: "Fix the flicker", body: "Fix the flicker\nmore detail" })
+  const long = "x".repeat(100)
+  expect(parseEditorText(`title:\n---\n${long}\n`)!.title).toBe("x".repeat(79) + "…")
+})
+
+test("parseEditorText: the template's header allows comments and blank lines; prompt lines starting with # stay", () => {
+  expect(parseEditorText(`# note\n\ntitle: T\n# another\n---\n# Heading\nbody`)).toEqual({ title: "T", body: "# Heading\nbody" })
+})
+
+test("parseEditorText: a file without the template still uses line 1 as the title", () => {
+  expect(parseEditorText("Title\n\n---\nnot a header\n")).toEqual({ title: "Title", body: "---\nnot a header" })
 })
 
 test("textToHtml and htmlToText round-trip paragraphs, line breaks, code fences and special characters", () => {

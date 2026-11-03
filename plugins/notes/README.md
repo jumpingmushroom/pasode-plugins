@@ -30,7 +30,16 @@ The token never goes in `cli.json`. To read it from another variable, set `token
 | `/notes` | `ctrl+x a` | Lists the notes of the open chat's project. On the home screen, asks for the project first. |
 | `/note` | `ctrl+x k` | Writes a new note for the open chat's project in `$EDITOR`. |
 
-In the editor, the first line is the title and the rest is the prompt. To cancel, save an empty file.
+The editor opens with a template:
+
+```
+# Write the title after "title:" and the prompt below the --- line. Lines above --- that start with # are ignored.
+title: Sidebar notes
+---
+Add a notes section to the sidebar for each project…
+```
+
+Write the title after `title:` and the prompt below the `---` line. The prompt is kept as written, including its own `---` lines and `#` headings. If you leave the title empty, the note takes the prompt's first line as its title. To cancel, save the template without a title or a prompt. A file without the template also works: its first line is the title and the rest is the prompt.
 
 In the notes list:
 
