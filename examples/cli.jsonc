@@ -37,6 +37,17 @@
       "commands": true,                    // /p:<id> per prompt
       "prefix": "p:",
       "plugin": "paseo-prompt-manager"     // Prompt Manager's plugin id on the daemon
+    }],
+    ["~/pasode-plugins/plugins/notes", {
+      "projects": "Work/Projects",         // required: note ID or title path whose children are your project notes
+      "folder": "Notes",                   // child of each project note that holds its notes; "" = the project note itself
+      "noteLabel": "pasodeNote",           // label on notes the plugin creates
+      "doneLabel": "done",                 // label for notes already sent to a chat
+      "pathLabel": "paseoPath",            // label that remembers a project note's daemon folder
+      "createProjects": true,              // offer "Create project note" when none matches
+      // "url": "https://notes.example.com/etapi",  // default: $TRILIUM_URL
+      "tokenEnv": "TRILIUM_TOKEN",         // environment variable holding the ETAPI token
+      "keys": { "list": "<leader>a", "add": "<leader>k" }
     }]
   ]
 }

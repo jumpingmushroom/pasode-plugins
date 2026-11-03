@@ -8,6 +8,7 @@ Plugins for [pasode](https://github.com/ragokan/pasode), the terminal client for
 | [usage-bar](plugins/usage-bar) | A one-line bar with your Claude 5-hour and weekly usage, plus the daemon host's CPU, memory, and fullest disk. |
 | [attention](plugins/attention) | A line that appears when other chats need you, wait on an automatic resume, or run subagents, with a key to jump to the next one. |
 | [prompts](plugins/prompts) | Your Prompt Manager library: clickable buttons at the top of each chat, a picker that also creates and edits prompts in your editor, and a `/p:<name>` command per prompt, with variables filled in before sending. |
+| [notes](plugins/notes) | Per-project notes in Trilium: jot down a fix or feature idea with its prompt, then start a chat from it in one key. |
 | [sound](plugins/sound) | A sound when a chat you have open finishes, asks a question, waits for a permission, or fails, plus a terminal bell for window urgency. |
 
 The plugins suit a remote daemon especially well: the projects picker starts chats in the daemon's folders, which don't exist on the machine that runs pasode.
@@ -20,6 +21,7 @@ The plugins suit a remote daemon especially well: the projects picker starts cha
   - [host-monitor](https://github.com/a31521424/paseo-kit/tree/main/plugins/host-monitor) for the host stats in usage-bar.
   - [usage-auto-resume](https://github.com/babo-jeonguk/paseo-usage-auto-resume) for automatic resumes in attention.
   - [Prompt Manager](https://github.com/yannelli/paseo-prompt-manager), which the prompts plugin needs for its library.
+- A [TriliumNext](https://github.com/TriliumNext/Trilium) server with ETAPI enabled, which the notes plugin needs for its notes.
 
 ## Install
 
@@ -38,7 +40,8 @@ The plugins suit a remote daemon especially well: the projects picker starts cha
        "~/pasode-plugins/plugins/usage-bar",
        "~/pasode-plugins/plugins/attention",
        ["~/pasode-plugins/plugins/sound", { "volume": 0.6 }],
-       "~/pasode-plugins/plugins/prompts"
+       "~/pasode-plugins/plugins/prompts",
+       ["~/pasode-plugins/plugins/notes", { "projects": "Work/Projects" }]
      ]
    }
    ```
