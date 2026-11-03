@@ -10,9 +10,11 @@ Press `ctrl+x p`, or run `/projects`. The picker also opens on launch when pasod
 
 The picker has three sections:
 
-- **Add**: **New project…** creates an empty folder in the projects root. **Clone from GitHub…** clones `owner/repo` or a GitHub URL into the projects root.
+- **Add**: **New project…** creates an empty folder in the projects root. **Add existing folder…** adds a folder that's already on the daemon: pick one of the projects root's folders that isn't a project yet, or pick **Type a path…** and enter an absolute path, or one relative to the projects root. **Clone from GitHub…** clones `owner/repo` or a GitHub URL into the projects root.
 - **Pinned**: your pinned chats, the same ones as the **Pinned** group in pasode's session switcher (`ctrl+x l`). Pins are Paseo's own, so they match the desktop and phone apps. Enter opens the chat.
 - **Projects**: every project, most recently used first, with its chat count.
+
+To rename a project, select it in **Projects** and press `ctrl+r`. The new name shows in every Paseo app. To go back to the folder's name, clear the field and press Enter. Renaming doesn't change the folder or its path.
 
 To remove a project from Paseo, select it in **Projects** and press `ctrl+d` twice. Paseo archives the project's workspaces and drops the project from its list, in every Paseo app. The project's folder stays on disk, so its files are kept.
 
@@ -23,9 +25,13 @@ Pick a project to see:
 - **New chat in a git worktree**, for git projects, which asks for a branch name and base.
 - **Chats**: every chat in the project, newest first. An archived chat is restored when you open it, and an empty workspace starts a new chat in its folder.
 
-Archiving a chat only hides it: it stays on the daemon and in this list. To delete an archived chat for good, select it and press `ctrl+d` twice. The plugin deletes the chat and archives its workspace, so the row leaves the list. The workspace's folder stays on disk. Only archived chats can be deleted, so archive a chat before you delete it. Deleting can't be undone.
+In a project's chats:
 
-A **no messages** row is a workspace without a chat. To remove it from the list, press `ctrl+d` twice on it. Its folder stays on disk.
+- `ctrl+f` pins or unpins a chat. Pinned chats show under **Pinned** in this picker and in the session switcher, and in the Paseo apps. Only live chats can be pinned.
+- `ctrl+r` renames a chat. Every Paseo app shows the new name.
+- `ctrl+d` pressed twice cleans up one step at a time. On a live chat, it archives the chat. On an archived chat, it deletes the chat for good and archives its workspace, so the row leaves the list. On a **no messages** row, a workspace without a chat, it removes the workspace from the list. Workspace folders stay on disk. Deleting can't be undone.
+
+Archiving only hides a chat: it stays on the daemon and in this list, and opening it restores it.
 
 To start a chat after picking, type your message. The home screen shows the project's folder.
 
@@ -35,6 +41,7 @@ When you archive the chat you're in, pasode sends you to the home screen, and th
 | --- | --- | --- |
 | `/projects` | `ctrl+x p` | Opens the picker. |
 | `/new-project` | | Creates a project. |
+| `/add-project` | | Adds an existing folder as a project. |
 | `/clone` | | Clones a GitHub repository as a project. |
 
 ## Options

@@ -10,7 +10,8 @@ export type Project = {
 
 export type Workspace = { projectId: string; activityAt?: string | null; lastUserMessageAt?: string | null; createdAt?: string | null }
 
-export type ProjectRow = { id: string; name: string; root: string; git: boolean; chats: number; lastActive?: string }
+/** `name` is what Paseo shows (the custom name, else the folder name); `folderName` is what a reset goes back to. */
+export type ProjectRow = { id: string; name: string; folderName: string; root: string; git: boolean; chats: number; lastActive?: string }
 
 export const projectName = (project: Project) => project.projectCustomName || project.projectDisplayName
 
@@ -28,6 +29,7 @@ export function projectRows(projects: Project[], workspaces: Workspace[]): Proje
     .map((project) => ({
       id: project.projectId,
       name: projectName(project),
+      folderName: project.projectDisplayName,
       root: project.projectRootPath,
       git: project.projectKind === "git",
       chats: stats.get(project.projectId)?.chats ?? 0,
@@ -105,16 +107,22 @@ export function projectChats(projectId: string, workspaces: ChatWorkspace[], age
   return chats.sort((a, b) => (b.at ?? "").localeCompare(a.at ?? ""))
 }
 
+/** What ctrl+d does to a chat, one step at a time: what it archives, deletes, or removes. */
+export type Cleanup = { kind: "archive"; agentId: string } | { kind: "delete"; agentId: string; workspaceId: string } | { kind: "remove"; workspaceId: string }
+
 /**
- * What ctrl+d removes for a chat. An archived chat: its session is deleted for good, then its workspace is archived so it
- * leaves the list (an archived chat's workspace holds no live session). An empty workspace: it is archived. Archiving a
- * workspace keeps its folder on disk. Live chats give undefined, so they are never wiped by accident.
+ * ctrl+d steps a chat toward gone, never skipping a step: a live chat is archived; an archived chat's session is deleted
+ * for good and its workspace archived, so it leaves the list; an empty workspace is archived. Archiving a workspace
+ * keeps its folder on disk.
  */
-export function deletion(chat: Chat): { agentId?: string; workspaceId: string } | undefined {
-  if (chat.state === "archived") return { agentId: chat.agentId, workspaceId: chat.workspaceId }
-  if (chat.state === "empty") return { workspaceId: chat.workspaceId }
-  return undefined
+export function cleanup(chat: Chat): Cleanup {
+  if (chat.directory !== undefined) return { kind: "remove", workspaceId: chat.workspaceId }
+  if (chat.state === "archived") return { kind: "delete", agentId: chat.agentId, workspaceId: chat.workspaceId }
+  return { kind: "archive", agentId: chat.agentId }
 }
+
+/** Only live chats can be pinned: Pinned lists live chats only, so pinning an archived chat or empty workspace shows nothing. */
+export const canPin = (chat: Chat) => chat.directory === undefined && chat.state !== "archived"
 
 /** The row footer for a chat: live state, or its age (archived/empty say so). */
 export function chatFooter(chat: Chat, now = Date.now()) {
@@ -205,4 +213,49 @@ export async function leftByArchive(deps: { live: () => boolean; home: () => boo
 export function removedProjectMessage(name: string, archived: number) {
   const workspaces = archived ? ` and archived ${archived} workspace${archived === 1 ? "" : "s"}` : ""
   return `Removed "${name}" from Paseo${workspaces}. Its folder stays on disk.`
+}
+
+/**
+ * The custom name to save from the rename prompt: the trimmed text, or null to reset to the folder name (an empty
+ * field, or the folder name itself). undefined (esc) means no change.
+ */
+export function renameTo(input: string | undefined, folderName: string): string | null | undefined {
+  if (input === undefined) return undefined
+  const name = input.trim()
+  return !name || name === folderName ? null : name
+}
+
+/** Folders directly in the projects root that aren't projects yet, sorted by name; hidden (dot) folders left out. */
+export function addableFolders(root: string, entries: { name: string; kind: "file" | "directory" }[], projectRoots: string[]) {
+  const base = root.replace(/\/+$/, "")
+  const taken = new Set(projectRoots.map((r) => r.replace(/\/+$/, "")))
+  return entries
+    .filter((e) => e.kind === "directory" && !e.name.startsWith(".") && !taken.has(`${base}/${e.name}`))
+    .map((e) => ({ name: e.name, path: `${base}/${e.name}` }))
+    .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }))
+}
+
+/** A typed folder as a full daemon path: absolute as is, relative from the projects root. undefined when empty or unresolvable. */
+export function folderPath(input: string, root: string | undefined) {
+  const text = input.trim().replace(/(.)\/+$/, "$1")
+  if (!text) return undefined
+  if (text.startsWith("/")) return text
+  if (!root) return undefined
+  return `${root.replace(/\/+$/, "")}/${text}`
+}
+
+/** The picker's footer keys for the selected row's kind: a pinned chat can be unpinned; a project renamed or removed. */
+export function pickerKeys(kind: string | undefined): ("unpin" | "rename" | "remove")[] {
+  if (kind === "pinned") return ["unpin"]
+  if (kind === "project") return ["rename", "remove"]
+  return []
+}
+
+/** The ctrl+f label: what pressing it does to the selected chat. */
+export const pinTitle = (pinned: boolean) => (pinned ? "unpin" : "pin")
+
+/** The chat list's footer keys for the selected row: none off a chat row (New chat, ← All projects). */
+export function chatKeys(chat: Chat | undefined): ("pin" | "rename" | Cleanup["kind"])[] {
+  if (!chat) return []
+  return [...(canPin(chat) ? (["pin"] as const) : []), "rename", cleanup(chat).kind]
 }

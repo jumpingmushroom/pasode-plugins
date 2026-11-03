@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test"
-import { ago, removedProjectMessage, deletion, leftByArchive, chatFooter, pinnedRows, inferRoot, insideProject, parseRepo, projectChats, projectRows, shortPath, validProjectName, type Project, cloneProtocol, clonePath } from "./model"
+import { ago, chatKeys, pickerKeys, pinTitle, addableFolders, folderPath, renameTo, removedProjectMessage, canPin, cleanup, leftByArchive, chatFooter, pinnedRows, inferRoot, insideProject, parseRepo, projectChats, projectRows, shortPath, validProjectName, type Project, cloneProtocol, clonePath } from "./model"
 
 test("projectChats lists every workspace: live, archived, and empty ones, newest first", () => {
   const chats = projectChats(
@@ -67,7 +67,7 @@ test("rows sort by latest activity, count chats, prefer custom names", () => {
     ],
   )
   expect(rows.map((r) => r.name)).toEqual(["Beta!", "alpha", "gamma"])
-  expect(rows[0]).toMatchObject({ chats: 2, lastActive: "2026-10-06T00:00:00Z", git: true })
+  expect(rows[0]).toMatchObject({ chats: 2, lastActive: "2026-10-06T00:00:00Z", git: true, folderName: "beta" })
   expect(rows[2]).toMatchObject({ chats: 0, lastActive: undefined, git: false })
 })
 
@@ -173,16 +173,71 @@ test("leftByArchive: false as soon as you leave home, even if the chat is gone",
   expect(await leftByArchive({ live: () => false, home: () => false, sleep })).toBe(false)
 })
 
-test("deletion: an archived chat deletes its session and archives its workspace; an empty workspace is archived; live chats are kept", () => {
-  expect(deletion({ title: "a", state: "archived", agentId: "x", workspaceId: "w" })).toEqual({ agentId: "x", workspaceId: "w" })
-  expect(deletion({ title: "a", state: "empty", directory: "/srv/p", workspaceId: "w" })).toEqual({ workspaceId: "w" })
-  expect(deletion({ title: "a", state: "idle", agentId: "x", workspaceId: "w" })).toBeUndefined()
-  expect(deletion({ title: "a", state: "running", agentId: "x", workspaceId: "w" })).toBeUndefined()
-  expect(deletion({ title: "a", state: "needs input", agentId: "x", workspaceId: "w" })).toBeUndefined()
+test("cleanup: ctrl+d archives a live chat, deletes an archived one with its workspace, removes an empty workspace", () => {
+  for (const state of ["idle", "running", "needs input"] as const)
+    expect(cleanup({ title: "a", state, agentId: "x", workspaceId: "w" })).toEqual({ kind: "archive", agentId: "x" })
+  expect(cleanup({ title: "a", state: "archived", agentId: "x", workspaceId: "w" })).toEqual({ kind: "delete", agentId: "x", workspaceId: "w" })
+  expect(cleanup({ title: "a", state: "empty", directory: "/srv/p", workspaceId: "w" })).toEqual({ kind: "remove", workspaceId: "w" })
+})
+
+test("canPin: only live chats; archived chats and empty workspaces can't be pinned", () => {
+  expect(canPin({ title: "a", state: "idle", agentId: "x", workspaceId: "w" })).toBe(true)
+  expect(canPin({ title: "a", state: "running", agentId: "x", workspaceId: "w" })).toBe(true)
+  expect(canPin({ title: "a", state: "archived", agentId: "x", workspaceId: "w" })).toBe(false)
+  expect(canPin({ title: "a", state: "empty", directory: "/p", workspaceId: "w" })).toBe(false)
 })
 
 test("removedProjectMessage names the project, the archived workspaces, and that the folder stays", () => {
   expect(removedProjectMessage("shop", 0)).toBe('Removed "shop" from Paseo. Its folder stays on disk.')
   expect(removedProjectMessage("shop", 1)).toBe('Removed "shop" from Paseo and archived 1 workspace. Its folder stays on disk.')
   expect(removedProjectMessage("shop", 3)).toBe('Removed "shop" from Paseo and archived 3 workspaces. Its folder stays on disk.')
+})
+
+test("renameTo: a new name is trimmed, an empty one or the folder's own name resets, esc cancels", () => {
+  expect(renameTo("  Shop app  ", "shop")).toBe("Shop app")
+  expect(renameTo("", "shop")).toBeNull()
+  expect(renameTo("   ", "shop")).toBeNull()
+  expect(renameTo("shop", "shop")).toBeNull()
+  expect(renameTo(undefined, "shop")).toBeUndefined()
+})
+
+test("addableFolders: folders in the root that aren't projects, by name, hidden ones left out", () => {
+  const entries = [
+    { name: "shop", path: "shop", kind: "directory" as const },
+    { name: "notes.txt", path: "notes.txt", kind: "file" as const },
+    { name: ".cache", path: ".cache", kind: "directory" as const },
+    { name: "Alpha", path: "Alpha", kind: "directory" as const },
+    { name: "blog", path: "blog", kind: "directory" as const },
+  ]
+  expect(addableFolders("/w", entries, ["/w/blog", "/w/other/x"])).toEqual([
+    { name: "Alpha", path: "/w/Alpha" },
+    { name: "shop", path: "/w/shop" },
+  ])
+})
+
+test("folderPath: an absolute path stays, a relative one is read from the root, trailing slashes go", () => {
+  expect(folderPath(" /srv/x/ ", "/w")).toBe("/srv/x")
+  expect(folderPath("shop", "/w")).toBe("/w/shop")
+  expect(folderPath("games/z/", "/w/")).toBe("/w/games/z")
+  expect(folderPath("shop", undefined)).toBeUndefined()
+  expect(folderPath("  ", "/w")).toBeUndefined()
+})
+
+test("pickerKeys: the footer offers unpin on a pinned chat, rename and remove on a project, nothing on Add rows", () => {
+  expect(pickerKeys("pinned")).toEqual(["unpin"])
+  expect(pickerKeys("project")).toEqual(["rename", "remove"])
+  expect(pickerKeys("new")).toEqual([])
+  expect(pickerKeys(undefined)).toEqual([])
+})
+
+test("pinTitle: the ctrl+f label says what pressing it does", () => {
+  expect(pinTitle(true)).toBe("unpin")
+  expect(pinTitle(false)).toBe("pin")
+})
+
+test("chatKeys: no keys off a chat row; pin only on live chats; ctrl+d named by its next step", () => {
+  expect(chatKeys(undefined)).toEqual([])
+  expect(chatKeys({ title: "a", state: "idle", agentId: "x", workspaceId: "w" })).toEqual(["pin", "rename", "archive"])
+  expect(chatKeys({ title: "a", state: "archived", agentId: "x", workspaceId: "w" })).toEqual(["rename", "delete"])
+  expect(chatKeys({ title: "a", state: "empty", directory: "/p", workspaceId: "w" })).toEqual(["rename", "remove"])
 })
