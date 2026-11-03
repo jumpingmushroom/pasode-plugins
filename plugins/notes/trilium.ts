@@ -84,7 +84,7 @@ export function createTrilium(config: { url: string; token: string; fetch?: type
     let parent = "the tree root"
     for (const segment of path.split("/").map((s) => s.trim()).filter(Boolean)) {
       const found = await children(id, `note.title = ${quote(segment)}`)
-      if (!found.length) throw new Error(`No Trilium note "${segment}" under "${parent}"`)
+      if (!found[0]) throw new Error(`No Trilium note "${segment}" under "${parent}"`)
       id = found[0].noteId
       parent = segment
     }

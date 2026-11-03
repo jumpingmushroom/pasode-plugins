@@ -18,7 +18,7 @@ function memory() {
   }
   const matches = (n: TNote, search: string) => {
     const title = /^note\.title = '(.*)'$/.exec(search)
-    if (title) return n.title === title[1].replace(/\\'/g, "'")
+    if (title) return n.title === title[1]!.replace(/\\'/g, "'")
     if (search === "note.noteId != ''") return true
     return search.split(/\s+/).every((token) => {
       const has = n.attributes.some((a) => a.type === "label" && a.name === token.replace(/^#!?/, ""))
@@ -78,7 +78,7 @@ test("folder mode: list hides done notes and converts bodies to text", async () 
   m.add(folder, "Finished", "<p>x</p>", { done: "" })
   const list = await createNotes(m.trilium, options()).list(project)
   expect(list.map((n) => [n.title, n.body])).toEqual([["Open", "a\nb"]])
-  expect(list[0].created).toMatch(/^2026-11-03T08:00:0\d\.000Z$/)
+  expect(list[0]!.created).toMatch(/^2026-11-03T08:00:0\d\.000Z$/)
 })
 
 test("flat mode: only labelled, open notes; siblings like Documentation stay out", async () => {
@@ -99,7 +99,7 @@ test("add then list returns the same title and body", async () => {
   const id = await notes.add(project, { title: "Sidebar notes", body: "Line one\nLine two\n\n- a & b" })
   const list = await notes.list(project)
   expect(list).toHaveLength(1)
-  expect(list[0]).toMatchObject({ noteId: id, title: "Sidebar notes", body: "Line one\nLine two\n\n- a & b" })
+  expect(list[0]!).toMatchObject({ noteId: id, title: "Sidebar notes", body: "Line one\nLine two\n\n- a & b" })
 })
 
 test("update, markDone and remove change the note", async () => {
@@ -108,7 +108,7 @@ test("update, markDone and remove change the note", async () => {
   const notes = createNotes(m.trilium, options())
   const id = await notes.add(project, { title: "A", body: "x" })
   await notes.update(id, { title: "B", body: "y" })
-  expect((await notes.list(project))[0]).toMatchObject({ title: "B", body: "y" })
+  expect((await notes.list(project))[0]!).toMatchObject({ title: "B", body: "y" })
   await notes.markDone(id)
   expect(await notes.list(project)).toEqual([])
   await notes.remove(id)

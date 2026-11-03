@@ -65,8 +65,8 @@ test("noteRows: newest first, description is the first non-empty body line", () 
     now,
   )
   expect(rows.map((r) => r.noteId)).toEqual(["new", "old"])
-  expect(rows[0]).toEqual({ noteId: "new", title: "New", description: "First line", footer: "2h ago" })
-  expect(rows[1].description).toBe("")
+  expect(rows[0]!).toEqual({ noteId: "new", title: "New", description: "First line", footer: "2h ago" })
+  expect(rows[1]!.description).toBe("")
 })
 
 test("webUrl strips /etapi", () => {

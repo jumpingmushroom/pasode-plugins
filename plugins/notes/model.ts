@@ -42,7 +42,7 @@ export function parseEditorText(text: string): { title: string; body: string } |
     .join("\n")
     .replace(/^(?:[ \t]*\n)+/, "")
     .trimEnd()
-  return { title: lines[at].trim(), body }
+  return { title: (lines[at] ?? "").trim(), body }
 }
 
 export function formatEditorText(note: { title: string; body: string }) {
@@ -59,7 +59,7 @@ function decodeEntities(value: string) {
   return value
     .replace(/&(#x[0-9a-f]+|#\d+|[a-z]+);/gi, (whole, name: string) => {
       if (name[0] === "#") {
-        const code = name[1].toLowerCase() === "x" ? parseInt(name.slice(2), 16) : parseInt(name.slice(1), 10)
+        const code = name[1]?.toLowerCase() === "x" ? parseInt(name.slice(2), 16) : parseInt(name.slice(1), 10)
         return Number.isFinite(code) ? String.fromCodePoint(code) : whole
       }
       return ENTITIES[name.toLowerCase()] ?? whole
@@ -77,15 +77,16 @@ export function textToHtml(text: string): string {
     paragraph = []
   }
   for (let i = 0; i < lines.length; i++) {
-    const fence = /^```\s*([\w+#.-]*)\s*$/.exec(lines[i])
+    const line = lines[i] ?? ""
+    const fence = /^```\s*([\w+#.-]*)\s*$/.exec(line)
     if (fence) {
       flush()
       const code: string[] = []
-      while (++i < lines.length && !/^```\s*$/.test(lines[i])) code.push(lines[i])
+      while (++i < lines.length && !/^```\s*$/.test(lines[i] ?? "")) code.push(lines[i] ?? "")
       const lang = fence[1] ? ` class="language-${fence[1]}"` : ""
       out.push(`<pre><code${lang}>${escapeHtml(code.join("\n"))}</code></pre>`)
-    } else if (lines[i].trim() === "") flush()
-    else paragraph.push(lines[i])
+    } else if (line.trim() === "") flush()
+    else paragraph.push(line)
   }
   flush()
   return out.join("")
@@ -104,7 +105,7 @@ export function htmlToText(html: string): string {
   text = text
     .replace(/<h([1-6])[^>]*>([\s\S]*?)<\/h\1>/gi, (_, level: string, inner: string) => `\n\n${"#".repeat(Number(level))} ${stripTags(inner).trim()}\n\n`)
     .replace(/<(ul|ol)[^>]*>([\s\S]*?)<\/\1>/gi, (_, kind: string, inner: string) => {
-      const items = [...inner.matchAll(/<li[^>]*>([\s\S]*?)<\/li>/gi)].map((m, i) => `${kind.toLowerCase() === "ol" ? `${i + 1}.` : "-"} ${stripTags(m[1].replace(/<br\s*\/?>/gi, " ")).trim()}`)
+      const items = [...inner.matchAll(/<li[^>]*>([\s\S]*?)<\/li>/gi)].map((m, i) => `${kind.toLowerCase() === "ol" ? `${i + 1}.` : "-"} ${stripTags((m[1] ?? "").replace(/<br\s*\/?>/gi, " ")).trim()}`)
       return `\n\n${items.join("\n")}\n\n`
     })
     .replace(/<br\s*\/?>/gi, "\n")
@@ -115,7 +116,7 @@ export function htmlToText(html: string): string {
     .join("\n")
     .replace(/\n{3,}/g, "\n\n")
     .trim()
-  return text.replace(/\u0000(\d+)\u0000/g, (_, i: string) => code[Number(i)])
+  return text.replace(/\u0000(\d+)\u0000/g, (_, i: string) => code[Number(i)] ?? "")
 }
 
 // ── Projects ──
@@ -131,7 +132,8 @@ export function matchProject(project: DaemonProject, candidates: Candidate[], pa
   if (labelled) return { noteId: labelled.noteId }
   const names = new Set([loose(project.name), loose(project.root.replace(/\/+$/, "").split("/").pop() ?? "")].filter(Boolean))
   const matches = candidates.filter((c) => names.has(loose(c.title)))
-  if (matches.length === 1) return { noteId: matches[0].noteId }
+  const [only] = matches
+  if (only && matches.length === 1) return { noteId: only.noteId }
   return { choices: [...matches, ...candidates.filter((c) => !matches.includes(c))] }
 }
 

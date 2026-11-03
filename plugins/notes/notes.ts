@@ -22,7 +22,7 @@ export function createNotes(trilium: Trilium, options: NotesOptions) {
   async function folder(projectNoteId: string) {
     if (options.folder === "") return projectNoteId
     const found = await trilium.children(projectNoteId, `note.title = ${quote(options.folder)}`)
-    if (found.length) return found[0].noteId
+    if (found[0]) return found[0].noteId
     return (await trilium.create(projectNoteId, options.folder, "")).noteId
   }
 
