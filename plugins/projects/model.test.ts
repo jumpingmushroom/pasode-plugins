@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test"
-import { ago, chatFooter, pinnedRows, inferRoot, insideProject, parseRepo, projectChats, projectRows, shortPath, validProjectName, type Project, cloneProtocol, clonePath } from "./model"
+import { ago, leftByArchive, chatFooter, pinnedRows, inferRoot, insideProject, parseRepo, projectChats, projectRows, shortPath, validProjectName, type Project, cloneProtocol, clonePath } from "./model"
 
 test("projectChats lists every workspace: live, archived, and empty ones, newest first", () => {
   const chats = projectChats(
@@ -146,4 +146,29 @@ test("cloneProtocol: ssh for git@ and ssh:// input, else the option, else https"
 test("clonePath: the repository's own folder inside the projects root", () => {
   expect(clonePath("/srv/projects", "owner/repo")).toBe("/srv/projects/repo")
   expect(clonePath("/srv/projects/", "owner/my.repo")).toBe("/srv/projects/my.repo")
+})
+
+test("leftByArchive: true once the chat you left drops out of the live list while you stay home", async () => {
+  let live = true
+  let slept = 0
+  const sleep = async (ms: number) => {
+    slept += ms
+    if (slept >= 300) live = false
+  }
+  expect(await leftByArchive({ live: () => live, home: () => true, sleep })).toBe(true)
+  expect(slept).toBe(300)
+})
+
+test("leftByArchive: false when the chat stays live (going home on purpose)", async () => {
+  let slept = 0
+  const sleep = async (ms: number) => void (slept += ms)
+  expect(await leftByArchive({ live: () => true, home: () => true, sleep, timeoutMs: 1500, stepMs: 100 })).toBe(false)
+  expect(slept).toBe(1500)
+})
+
+test("leftByArchive: false as soon as you leave home, even if the chat is gone", async () => {
+  let home = true
+  const sleep = async () => void (home = false)
+  expect(await leftByArchive({ live: () => true, home: () => home, sleep })).toBe(false)
+  expect(await leftByArchive({ live: () => false, home: () => false, sleep })).toBe(false)
 })

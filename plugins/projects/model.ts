@@ -174,3 +174,17 @@ export function pinnedRows(candidates: PinnedCandidate[], now = Date.now()): Pin
       return { id: c.id, title: c.title || "Untitled", footer: `${project} · ${state}` }
     })
 }
+
+/**
+ * After you go from a chat to the home screen: true when that chat drops out of pasode's live list (it was archived)
+ * while you're still home, checked every `stepMs` for up to `timeoutMs`. False when it stays live or you leave home.
+ */
+export async function leftByArchive(deps: { live: () => boolean; home: () => boolean; sleep: (ms: number) => Promise<void>; timeoutMs?: number; stepMs?: number }) {
+  const { timeoutMs = 1500, stepMs = 100 } = deps
+  for (let waited = 0; ; waited += stepMs) {
+    if (!deps.home()) return false
+    if (!deps.live()) return true
+    if (waited >= timeoutMs) return false
+    await deps.sleep(stepMs)
+  }
+}

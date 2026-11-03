@@ -23,6 +23,8 @@ Pick a project to see:
 
 To start a chat after picking, type your message. The home screen shows the project's folder.
 
+When you archive the chat you're in, pasode sends you to the home screen, and the picker opens there, so another pinned chat or project is one key away. Esc closes it and leaves you on the home screen. This also works when you archive the chat you're in from the session switcher (`ctrl+x l`): the switcher closes, and the picker opens instead. Archiving another chat from the switcher keeps you in the switcher. The picker doesn't open when you go home without archiving. To turn this off, set `openAfterArchive` to `false`.
+
 | Command | Key | Does |
 | --- | --- | --- |
 | `/projects` | `ctrl+x p` | Opens the picker. |
@@ -36,6 +38,7 @@ To start a chat after picking, type your message. The home screen shows the proj
 | `root` | The folder that most project folders sit in | Where **New project…** and **Clone from GitHub…** put new projects. |
 | `autoOpen` | `true` | Opens the picker on launch outside a known project. `false` turns this off. |
 | `cloneProtocol` | `"https"` | How **Clone from GitHub…** clones `owner/repo`: `"https"` or `"ssh"`. A pasted `git@…` or `ssh://` address always clones over SSH, and an `https://` URL over HTTPS. |
+| `openAfterArchive` | `true` | Opens the picker when archiving the chat you're in sends you to the home screen. `false` turns this off. |
 
 ```jsonc
 ["~/pasode-plugins/plugins/projects", { "root": "/srv/projects", "autoOpen": true, "cloneProtocol": "https" }]

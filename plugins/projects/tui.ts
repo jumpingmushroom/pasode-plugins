@@ -7,8 +7,10 @@
 //   root      where new projects and clones go; default = the folder most existing projects sit in.
 //   autoOpen  false stops the picker opening on launch outside a known project (default true).
 //   cloneProtocol  "https" (default) or "ssh" for owner/repo clones; a pasted URL keeps its own protocol.
+//   openAfterArchive  false stops the picker opening when archiving the open chat sends you home (default true).
+import { createEffect, on } from "solid-js"
 import type { PasodePlugin } from "@pasode/host"
-import { ago, chatFooter, clonePath, cloneProtocol, pinnedRows, inferRoot, insideProject, parseRepo, projectChats, projectRows, shortPath, validProjectName, type ChatAgent, type ChatWorkspace, type Project, type ProjectRow } from "./model"
+import { ago, leftByArchive, chatFooter, clonePath, cloneProtocol, pinnedRows, inferRoot, insideProject, parseRepo, projectChats, projectRows, shortPath, validProjectName, type ChatAgent, type ChatWorkspace, type Project, type ProjectRow } from "./model"
 
 type Pick =
   | { kind: "project"; row: ProjectRow }
@@ -208,6 +210,27 @@ export default {
         if (ctx.paseo.agentId() || draft().cwd) return
         void openProjects()
       }, 400)
+    }
+
+    // Archiving the open chat sends pasode home; open the picker there so the next pinned chat is one key away.
+    // pasode doesn't say why you went home, so it counts as an archive when the chat you left drops out of the live list.
+    if (ctx.options.openAfterArchive !== false) {
+      createEffect(
+        on(ctx.paseo.agentId, (id, left) => {
+          if (id || !left) return
+          void leftByArchive({
+            live: () => !!ctx.paseo.agents[left],
+            home: () => !ctx.paseo.agentId(),
+            sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
+          }).then((archived) => {
+            if (!archived) return
+            // Archiving from the session list keeps that list open, and pasode then draws the home screen over it.
+            // Closing the list first makes the picker a fresh dialog, drawn above the home screen.
+            ctx.ui.dialog.clear()
+            void openProjects()
+          })
+        }),
+      )
     }
 
     ctx.commands.register([
