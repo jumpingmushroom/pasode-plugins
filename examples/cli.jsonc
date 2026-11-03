@@ -47,7 +47,8 @@
       "createProjects": true,              // offer "Create project note" when none matches
       // "url": "https://notes.example.com/etapi",  // default: $TRILIUM_URL
       "tokenEnv": "TRILIUM_TOKEN",         // environment variable holding the ETAPI token
-      "keys": { "list": "<leader>a", "add": "<leader>k" }
+      "keys": { "list": "<leader>a", "add": "<leader>k" },
+      "sidebar": true                      // the project's notes in pasode's sidebar
     }]
   ]
 }

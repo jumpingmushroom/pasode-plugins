@@ -169,3 +169,15 @@ test("push: success starts once, then marks done once", async () => {
   expect(result).toEqual({ chatId: "chat1" })
   expect(order).toEqual(["start", "done"])
 })
+
+test("peek lists open notes without creating the notes folder", async () => {
+  const m = memory()
+  const project = m.add("projects", "foo")
+  const notes = createNotes(m.trilium, options())
+  expect(await notes.peek(project)).toEqual([])
+  expect(m.log.some((line) => line.startsWith("create"))).toBe(false)
+  const folder = m.add(project, "Notes")
+  m.add(folder, "Open", "<p>x</p>")
+  m.add(folder, "Finished", "<p>y</p>", { done: "" })
+  expect((await notes.peek(project)).map((n) => n.title)).toEqual(["Open"])
+})

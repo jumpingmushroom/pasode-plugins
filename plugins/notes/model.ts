@@ -10,6 +10,7 @@ export type NotesOptions = {
   url?: string
   token?: string
   keys: { list: string; add: string }
+  sidebar: boolean
 }
 
 const str = (value: unknown, fallback: string) => (typeof value === "string" ? value : fallback)
@@ -28,6 +29,7 @@ export function readOptions(raw: Record<string, unknown>, env: Record<string, st
     url: url ? url.replace(/\/+$/, "") : undefined,
     token: env[str(raw.tokenEnv, "TRILIUM_TOKEN")] || undefined,
     keys: { list: str(keys.list, "<leader>a"), add: str(keys.add, "<leader>k") },
+    sidebar: typeof raw.sidebar === "boolean" ? raw.sidebar : true,
   }
 }
 
@@ -190,6 +192,12 @@ export function noteRows(notes: NoteItem[], now = Date.now()) {
       description: note.body.split("\n").find((line) => line.trim() !== "")?.trim() ?? "",
       footer: ago(note.created, now),
     }))
+}
+
+/** The sidebar's rows: the newest `max` notes, plus how many more there are. */
+export function sidebarRows(notes: NoteItem[], max: number) {
+  const sorted = notes.toSorted((a, b) => b.created.localeCompare(a.created))
+  return { rows: sorted.slice(0, max).map(({ noteId, title }) => ({ noteId, title })), more: Math.max(0, sorted.length - max) }
 }
 
 /** The note in Trilium's web app: the ETAPI URL without its /etapi suffix. */

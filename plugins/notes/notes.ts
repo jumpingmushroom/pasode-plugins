@@ -19,11 +19,21 @@ export function createNotes(trilium: Trilium, options: NotesOptions) {
     return projectsRoot
   }
 
-  async function folder(projectNoteId: string) {
+  /** The notes folder; created on first use unless `create` is false (the sidebar only reads). */
+  async function folder(projectNoteId: string, create = true): Promise<string | undefined> {
     if (options.folder === "") return projectNoteId
     const found = await trilium.children(projectNoteId, `note.title = ${quote(options.folder)}`)
     if (found[0]) return found[0].noteId
-    return (await trilium.create(projectNoteId, options.folder, "")).noteId
+    return create ? (await trilium.create(projectNoteId, options.folder, "")).noteId : undefined
+  }
+
+  async function open(folderId: string | undefined): Promise<NoteItem[]> {
+    if (!folderId) return []
+    const search = options.folder === "" ? `#${options.noteLabel} #!${options.doneLabel}` : `#!${options.doneLabel}`
+    const found = await trilium.children(folderId, search)
+    return Promise.all(
+      found.map(async (n) => ({ noteId: n.noteId, title: n.title, body: htmlToText(await trilium.content(n.noteId)), created: iso(n.utcDateCreated) })),
+    )
   }
 
   return {
@@ -38,14 +48,14 @@ export function createNotes(trilium: Trilium, options: NotesOptions) {
       return (await trilium.create(await root(), project.name, "", { [options.pathLabel]: project.root })).noteId
     },
     async list(projectNoteId: string): Promise<NoteItem[]> {
-      const search = options.folder === "" ? `#${options.noteLabel} #!${options.doneLabel}` : `#!${options.doneLabel}`
-      const found = await trilium.children(await folder(projectNoteId), search)
-      return Promise.all(
-        found.map(async (n) => ({ noteId: n.noteId, title: n.title, body: htmlToText(await trilium.content(n.noteId)), created: iso(n.utcDateCreated) })),
-      )
+      return open(await folder(projectNoteId))
+    },
+    /** Like list, but never creates anything. */
+    async peek(projectNoteId: string): Promise<NoteItem[]> {
+      return open(await folder(projectNoteId, false))
     },
     async add(projectNoteId: string, note: { title: string; body: string }) {
-      return (await trilium.create(await folder(projectNoteId), note.title, textToHtml(note.body), { [options.noteLabel]: "" })).noteId
+      return (await trilium.create((await folder(projectNoteId))!, note.title, textToHtml(note.body), { [options.noteLabel]: "" })).noteId
     },
     async update(noteId: string, note: { title: string; body: string }) {
       await trilium.rename(noteId, note.title)

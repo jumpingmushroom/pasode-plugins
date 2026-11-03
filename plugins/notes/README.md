@@ -41,6 +41,12 @@ In the notes list:
 - `ctrl+o` opens the note in Trilium's web app.
 - `tab` switches to another project.
 
+### In the sidebar
+
+In a chat, pasode's sidebar shows a **Notes** section below the others with the project's open notes, newest first, up to eight. Click a note to open the notes list with that note selected; Enter there starts the chat. Click **+ new note** to write one. If the project has no Trilium note yet, the section says **click to set up**, and clicking it runs `/notes`. The section reloads when you switch chats, after every change you make through the plugin, and every 60 seconds, so notes added in Trilium's web app show up too. The sidebar only reads: it never creates a project note or a notes folder.
+
+pasode shows the sidebar in chats on terminals at least 120 columns wide, or when you turn it on with `ctrl+x b`. To hide the section, set `sidebar` to `false`.
+
 The chat uses the provider and model on pasode's home screen and pasode's `session.permissions` setting, the same as a chat you start yourself.
 
 ## How notes are stored
@@ -68,6 +74,7 @@ A note is a Trilium text note. Notes you write in Trilium's web editor work too:
 | `createProjects` | `true` | Offers **Create project note** when no project note matches. |
 | `url` | `$TRILIUM_URL` | ETAPI URL, such as `https://notes.example.com/etapi`. |
 | `tokenEnv` | `"TRILIUM_TOKEN"` | Environment variable that holds the ETAPI token. |
+| `sidebar` | `true` | Shows the project's notes in pasode's sidebar. |
 | `keys` | `{ "list": "<leader>a", "add": "<leader>k" }` | Keys for the two commands. |
 
 ## Troubleshooting

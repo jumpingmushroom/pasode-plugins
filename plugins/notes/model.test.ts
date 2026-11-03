@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test"
-import { formatEditorText, htmlToText, matchProject, noteRows, parseEditorText, readOptions, sameNote, textToHtml, webUrl } from "./model"
+import { formatEditorText, htmlToText, matchProject, noteRows, parseEditorText, readOptions, sameNote, sidebarRows, textToHtml, webUrl } from "./model"
 
 test("readOptions: defaults, env url and token, bad types fall back", () => {
   const o = readOptions({ projects: "Work/Projects", folder: 3 }, { TRILIUM_URL: "https://notes.example.com/etapi/", TRILIUM_TOKEN: "t" })
@@ -13,6 +13,7 @@ test("readOptions: defaults, env url and token, bad types fall back", () => {
     url: "https://notes.example.com/etapi",
     token: "t",
     keys: { list: "<leader>a", add: "<leader>k" },
+    sidebar: true,
   })
   expect(readOptions({ tokenEnv: "MY_TOKEN", folder: "" }, { MY_TOKEN: "x" })).toMatchObject({ token: "x", folder: "" })
 })
@@ -96,4 +97,16 @@ test("matchProject doesn't title-match a note already linked to another folder",
   const p = { root: "/srv/b/api", name: "api" }
   const linked = { noteId: "a", title: "api", labels: { paseoPath: "/srv/a/api" } }
   expect(matchProject(p, [linked], "paseoPath")).toEqual({ choices: [linked] })
+})
+
+test("sidebarRows: newest first, at most `max` rows, the rest counted", () => {
+  const n = (noteId: string, created: string) => ({ noteId, title: noteId, body: "", created })
+  const notes = [n("a", "2026-11-01T00:00:00Z"), n("b", "2026-11-03T00:00:00Z"), n("c", "2026-11-02T00:00:00Z")]
+  expect(sidebarRows(notes, 2)).toEqual({ rows: [{ noteId: "b", title: "b" }, { noteId: "c", title: "c" }], more: 1 })
+  expect(sidebarRows(notes, 8)).toEqual({ rows: [{ noteId: "b", title: "b" }, { noteId: "c", title: "c" }, { noteId: "a", title: "a" }], more: 0 })
+})
+
+test("readOptions: sidebar defaults to true and reads false", () => {
+  expect(readOptions({}, {}).sidebar).toBe(true)
+  expect(readOptions({ sidebar: false }, {}).sidebar).toBe(false)
 })
