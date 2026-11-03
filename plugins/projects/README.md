@@ -21,6 +21,10 @@ Pick a project to see:
 - **New chat in a git worktree**, for git projects, which asks for a branch name and base.
 - **Chats**: every chat in the project, newest first. An archived chat is restored when you open it, and an empty workspace starts a new chat in its folder.
 
+Archiving a chat only hides it: it stays on the daemon and in this list. To delete an archived chat for good, select it and press `ctrl+d` twice. The plugin deletes the chat and archives its workspace, so the row leaves the list. The workspace's folder stays on disk. Only archived chats can be deleted, so archive a chat before you delete it. Deleting can't be undone.
+
+A **no messages** row is a workspace without a chat. To remove it from the list, press `ctrl+d` twice on it. Its folder stays on disk.
+
 To start a chat after picking, type your message. The home screen shows the project's folder.
 
 When you archive the chat you're in, pasode sends you to the home screen, and the picker opens there, so another pinned chat or project is one key away. Esc closes it and leaves you on the home screen. This also works when you archive the chat you're in from the session switcher (`ctrl+x l`): the switcher closes, and the picker opens instead. Archiving another chat from the switcher keeps you in the switcher. The picker doesn't open when you go home without archiving. To turn this off, set `openAfterArchive` to `false`.

@@ -69,7 +69,7 @@ export type ChatAgent = { id: string; workspaceId?: string | null; parentAgentId
  * when opened. A workspace with no session at all (e.g. a project's default workspace) has `directory` instead:
  * opening it starts a new chat there.
  */
-export type Chat = { title: string; state: "running" | "needs input" | "idle" | "archived" | "empty"; at?: string } &
+export type Chat = { title: string; state: "running" | "needs input" | "idle" | "archived" | "empty"; at?: string; workspaceId: string } &
   ({ agentId: string; directory?: undefined } | { agentId?: undefined; directory: string })
 
 /** A project's chats, newest first. `agents` may mix the live list and archived history; live entries win. */
@@ -91,17 +91,29 @@ export function projectChats(projectId: string, workspaces: ChatWorkspace[], age
     const title = ws.title || agent?.title || ws.name || "Untitled"
     if (!agent) {
       const directory = ws.workspaceDirectory ?? root
-      if (directory) chats.push({ title, state: "empty", at: ws.activityAt ?? ws.createdAt ?? undefined, directory })
+      if (directory) chats.push({ title, state: "empty", at: ws.activityAt ?? ws.createdAt ?? undefined, directory, workspaceId: ws.id })
       continue
     }
     chats.push({
       agentId: agent.id,
+      workspaceId: ws.id,
       title,
       state: agent.archivedAt ? "archived" : agent.pendingPermissions?.length ? "needs input" : agent.status === "running" ? "running" : "idle",
       at: ws.lastUserMessageAt ?? agent.lastUserMessageAt ?? ws.activityAt ?? agent.updatedAt ?? undefined,
     })
   }
   return chats.sort((a, b) => (b.at ?? "").localeCompare(a.at ?? ""))
+}
+
+/**
+ * What ctrl+d removes for a chat. An archived chat: its session is deleted for good, then its workspace is archived so it
+ * leaves the list (an archived chat's workspace holds no live session). An empty workspace: it is archived. Archiving a
+ * workspace keeps its folder on disk. Live chats give undefined, so they are never wiped by accident.
+ */
+export function deletion(chat: Chat): { agentId?: string; workspaceId: string } | undefined {
+  if (chat.state === "archived") return { agentId: chat.agentId, workspaceId: chat.workspaceId }
+  if (chat.state === "empty") return { workspaceId: chat.workspaceId }
+  return undefined
 }
 
 /** The row footer for a chat: live state, or its age (archived/empty say so). */

@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test"
-import { ago, leftByArchive, chatFooter, pinnedRows, inferRoot, insideProject, parseRepo, projectChats, projectRows, shortPath, validProjectName, type Project, cloneProtocol, clonePath } from "./model"
+import { ago, deletion, leftByArchive, chatFooter, pinnedRows, inferRoot, insideProject, parseRepo, projectChats, projectRows, shortPath, validProjectName, type Project, cloneProtocol, clonePath } from "./model"
 
 test("projectChats lists every workspace: live, archived, and empty ones, newest first", () => {
   const chats = projectChats(
@@ -22,10 +22,10 @@ test("projectChats lists every workspace: live, archived, and empty ones, newest
     ],
   )
   expect(chats).toEqual([
-    { agentId: "a2", title: "named", state: "running", at: "2026-10-05T00:00:00Z" },
-    { agentId: "a3", title: "Archived chat", state: "archived", at: "2026-10-03T00:00:00Z" },
-    { agentId: "a1", title: "Old chat", state: "idle", at: "2026-10-01T00:00:00Z" },
-    { directory: "/w/shop", title: "shop", state: "empty", at: "2026-09-01T00:00:00Z" },
+    { agentId: "a2", workspaceId: "w2", title: "named", state: "running", at: "2026-10-05T00:00:00Z" },
+    { agentId: "a3", workspaceId: "w3", title: "Archived chat", state: "archived", at: "2026-10-03T00:00:00Z" },
+    { agentId: "a1", workspaceId: "w1", title: "Old chat", state: "idle", at: "2026-10-01T00:00:00Z" },
+    { directory: "/w/shop", workspaceId: "w5", title: "shop", state: "empty", at: "2026-09-01T00:00:00Z" },
   ])
 })
 
@@ -37,10 +37,10 @@ test("needs input wins over idle, and an empty workspace without a directory fal
 
 test("chatFooter shows live state, archive age, or no messages", () => {
   const now = Date.parse("2026-11-02T12:00:00Z")
-  expect(chatFooter({ agentId: "a", title: "t", state: "running" }, now)).toBe("running")
-  expect(chatFooter({ agentId: "a", title: "t", state: "archived", at: "2026-11-01T15:00:00Z" }, now)).toBe("archived · 21h ago")
-  expect(chatFooter({ directory: "/w", title: "t", state: "empty" }, now)).toBe("no messages")
-  expect(chatFooter({ agentId: "a", title: "t", state: "idle", at: "2026-11-02T11:00:00Z" }, now)).toBe("1h ago")
+  expect(chatFooter({ agentId: "a", workspaceId: "w", title: "t", state: "running" }, now)).toBe("running")
+  expect(chatFooter({ agentId: "a", workspaceId: "w", title: "t", state: "archived", at: "2026-11-01T15:00:00Z" }, now)).toBe("archived · 21h ago")
+  expect(chatFooter({ directory: "/w", workspaceId: "w", title: "t", state: "empty" }, now)).toBe("no messages")
+  expect(chatFooter({ agentId: "a", workspaceId: "w", title: "t", state: "idle", at: "2026-11-02T11:00:00Z" }, now)).toBe("1h ago")
 })
 
 test("insideProject matches roots and subfolders, not name prefixes", () => {
@@ -171,4 +171,12 @@ test("leftByArchive: false as soon as you leave home, even if the chat is gone",
   const sleep = async () => void (home = false)
   expect(await leftByArchive({ live: () => true, home: () => home, sleep })).toBe(false)
   expect(await leftByArchive({ live: () => false, home: () => false, sleep })).toBe(false)
+})
+
+test("deletion: an archived chat deletes its session and archives its workspace; an empty workspace is archived; live chats are kept", () => {
+  expect(deletion({ title: "a", state: "archived", agentId: "x", workspaceId: "w" })).toEqual({ agentId: "x", workspaceId: "w" })
+  expect(deletion({ title: "a", state: "empty", directory: "/srv/p", workspaceId: "w" })).toEqual({ workspaceId: "w" })
+  expect(deletion({ title: "a", state: "idle", agentId: "x", workspaceId: "w" })).toBeUndefined()
+  expect(deletion({ title: "a", state: "running", agentId: "x", workspaceId: "w" })).toBeUndefined()
+  expect(deletion({ title: "a", state: "needs input", agentId: "x", workspaceId: "w" })).toBeUndefined()
 })

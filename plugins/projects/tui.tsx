@@ -1,6 +1,6 @@
 // Projects picker for pasode, like the Paseo desktop sidebar's per-project "+":
 // ctrl+x p (or /projects) lists pinned chats (Paseo's workspace pins) and the daemon's projects; pick one to open one of its chats, start a new one, start one in a new git worktree,
-// or create a new project / clone one from GitHub. Paths are the daemon's (e.g. /srv/projects/<name>),
+// or create a new project / clone one from GitHub. In a project's chats, ctrl+d twice deletes an archived chat for good. Paths are the daemon's (e.g. /srv/projects/<name>),
 // so this works with a remote daemon whose folders don't exist on this machine.
 //
 // Options (cli.json: ["~/pasode-plugins/plugins/projects", { "root": "/srv/projects" }]):
@@ -8,9 +8,9 @@
 //   autoOpen  false stops the picker opening on launch outside a known project (default true).
 //   cloneProtocol  "https" (default) or "ssh" for owner/repo clones; a pasted URL keeps its own protocol.
 //   openAfterArchive  false stops the picker opening when archiving the open chat sends you home (default true).
-import { createEffect, on } from "solid-js"
+import { createEffect, createSignal, on } from "solid-js"
 import type { PasodePlugin } from "@pasode/host"
-import { ago, leftByArchive, chatFooter, clonePath, cloneProtocol, pinnedRows, inferRoot, insideProject, parseRepo, projectChats, projectRows, shortPath, validProjectName, type ChatAgent, type ChatWorkspace, type Project, type ProjectRow } from "./model"
+import { ago, deletion, leftByArchive, chatFooter, clonePath, cloneProtocol, pinnedRows, inferRoot, insideProject, parseRepo, projectChats, projectRows, shortPath, validProjectName, type Chat, type ChatAgent, type ChatWorkspace, type Project, type ProjectRow } from "./model"
 
 type Pick =
   | { kind: "project"; row: ProjectRow }
@@ -18,7 +18,7 @@ type Pick =
   | { kind: "clone" }
   | { kind: "pinned"; id: string }
 
-type Choice = "chat" | "worktree" | "back" | { open: string; archived: boolean } | { startIn: string }
+type Choice = "chat" | "worktree" | "back" | { open: string; archived: boolean } | { startIn: string } | { remove: { agentId?: string; workspaceId: string } }
 
 type Data = {
   rows: ProjectRow[]
@@ -127,22 +127,17 @@ export default {
       })
       // Live sessions first: they carry current status; history adds the archived ones the live list leaves out.
       const chats = projectChats(row.id, data.workspaces, [...Object.values(ctx.paseo.agents), ...history], row.root)
-      const choice = await dialog.select<Choice>({
-        title: row.name,
-        placeholder: "Search chats · esc goes back",
-        size: "large",
-        options: [
-          { title: "← All projects", value: "back" as const },
-          { title: "New chat", category: "New", value: "chat" as const },
-          ...(row.git ? [{ title: "New chat in a git worktree", description: "branch + base", category: "New", value: "worktree" as const }] : []),
-          ...chats.map((chat) => ({
-            title: chat.title,
-            footer: chatFooter(chat),
-            category: "Chats",
-            value: (chat.directory !== undefined ? { startIn: chat.directory } : { open: chat.agentId, archived: chat.state === "archived" }) as Choice,
-          })),
-        ],
+      const choice = await new Promise<Choice | undefined>((resolve) => {
+        let done = false
+        const finish = (value?: Choice) => {
+          if (done) return
+          done = true
+          resolve(value)
+          dialog.clear()
+        }
+        dialog.replace(() => <ChatMenu row={row} chats={chats} onDone={finish} />, "large", () => finish(undefined))
       })
+      if (typeof choice === "object" && "remove" in choice) return void deleteChat(choice.remove, row)
       // Esc in a project returns to the list (with this project highlighted); esc there closes.
       if (!choice || choice === "back") return void openProjects(data, row)
       if (typeof choice === "object" && "open" in choice) return void openChat(choice.open, choice.archived, history)
@@ -153,6 +148,67 @@ export default {
         setDraft({ ...draft(), cwd: row.root, worktree: undefined, fork: undefined })
         ctx.commands.run("session.new.worktree")
       }
+    }
+
+    /** A project's chats; ctrl+d twice deletes an archived chat for good, or clears an empty workspace (see deletion()). */
+    function ChatMenu(props: { row: ProjectRow; chats: Chat[]; onDone: (choice?: Choice) => void }) {
+      const [armed, setArmed] = createSignal<string>()
+      // DialogSelect matches `current` by identity, so each chat's value is built once.
+      const values = new Map(
+        props.chats.map((chat) => [chat, (chat.directory !== undefined ? { startIn: chat.directory } : { open: chat.agentId, archived: chat.state === "archived" }) as Choice]),
+      )
+      const removals = new Map(props.chats.map((chat) => [values.get(chat)!, deletion(chat)]))
+      return (
+        <ctx.ui.components.DialogSelect<Choice>
+          title={props.row.name}
+          placeholder="Search chats · esc goes back"
+          options={[
+            { title: "← All projects", value: "back" as const },
+            { title: "New chat", category: "New", value: "chat" as const },
+            ...(props.row.git ? [{ title: "New chat in a git worktree", description: "branch + base", category: "New", value: "worktree" as const }] : []),
+            ...props.chats.map((chat) => {
+              const on = armed() === chat.workspaceId
+              return {
+                title: chat.title,
+                bg: on ? ctx.theme.error : undefined,
+                footer: on ? (chat.state === "empty" ? "ctrl+d again to remove" : "ctrl+d again to delete for good") : chatFooter(chat),
+                category: "Chats",
+                value: values.get(chat)!,
+              }
+            }),
+          ]}
+          onMove={() => setArmed(undefined)}
+          onSelect={(option) => props.onDone(option.value)}
+          actions={[
+            {
+              label: "ctrl+d",
+              title: "delete archived",
+              match: (key) => key.ctrl && key.name === "d",
+              run: (option) => {
+                if (typeof option.value !== "object") return
+                const removal = removals.get(option.value)
+                if (!removal) return notify("Only archived chats can be deleted. Archive it first.", "warning")
+                if (armed() !== removal.workspaceId) return setArmed(removal.workspaceId)
+                props.onDone({ remove: removal })
+              },
+            },
+          ]}
+        />
+      )
+    }
+
+    /** Deletes an archived chat's session for good and archives its workspace (its folder stays), then shows the project's chats again. */
+    async function deleteChat(removal: { agentId?: string; workspaceId: string }, row: ProjectRow) {
+      try {
+        if (removal.agentId) await daemon.deleteAgent(removal.agentId)
+        const archived = await daemon.archiveWorkspace(removal.workspaceId)
+        if (archived.error) throw new Error(`${removal.agentId ? "Chat deleted, but its workspace stays: " : ""}${archived.error}`)
+        notify(removal.agentId ? "Chat deleted" : "Empty workspace removed", "success")
+      } catch (error) {
+        showError(error)
+      }
+      const data = await load().catch((error) => void showError(error))
+      if (data) void projectMenu(data.rows.find((r) => r.id === row.id) ?? row, data)
     }
 
     /** Opens a chat; an archived one is restored first, like pasode's session history (Paseo's own "Unarchive"). */
