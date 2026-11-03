@@ -4,7 +4,8 @@
   "plugins": [
     ["~/pasode-plugins/plugins/projects", {
       // "root": "/srv/projects",          // where new projects and clones go; default: inferred from existing projects
-      "autoOpen": true                     // open the picker on launch outside a known project
+      "autoOpen": true,                    // open the picker on launch outside a known project
+      "cloneProtocol": "https"             // "https" or "ssh" for owner/repo clones; a pasted URL keeps its own
     }],
     ["~/pasode-plugins/plugins/usage-bar", {
       "providers": ["claude"],             // add "codex" to show both

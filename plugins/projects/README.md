@@ -35,13 +35,15 @@ To start a chat after picking, type your message. The home screen shows the proj
 | --- | --- | --- |
 | `root` | The folder that most project folders sit in | Where **New project…** and **Clone from GitHub…** put new projects. |
 | `autoOpen` | `true` | Opens the picker on launch outside a known project. `false` turns this off. |
+| `cloneProtocol` | `"https"` | How **Clone from GitHub…** clones `owner/repo`: `"https"` or `"ssh"`. A pasted `git@…` or `ssh://` address always clones over SSH, and an `https://` URL over HTTPS. |
 
 ```jsonc
-["~/pasode-plugins/plugins/projects", { "root": "/srv/projects", "autoOpen": true }]
+["~/pasode-plugins/plugins/projects", { "root": "/srv/projects", "autoOpen": true, "cloneProtocol": "https" }]
 ```
 
 ## Notes
 
+- The daemon clones, not the machine that runs pasode. A private repository over HTTPS needs GitHub credentials on the daemon's host, and one over SSH needs an SSH key there that GitHub accepts.
 - To find archived chats, the picker loads the daemon's session history in the background when it opens. A few hundred sessions take well under a second.
 - In Paseo a chat is a workspace with one top-level session. Paseo child agents (labelled `paseo.parent-agent-id`) don't appear as chats.
 - On the home screen, pasode's `ctrl+x n` clears the picked project. Inside a chat, it starts a new chat in the same project.

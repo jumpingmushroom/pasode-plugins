@@ -132,6 +132,17 @@ export function parseRepo(input: string): string | undefined {
   return match ? `${match[1]}/${match[2]}` : undefined
 }
 
+/**
+ * How the daemon clones: the protocol the pasted address already uses (git@ or ssh:// is ssh, an http(s) URL is
+ * https), else the `cloneProtocol` option, else https. The daemon refuses owner/repo without one.
+ */
+export function cloneProtocol(input: string, fallback?: unknown): "https" | "ssh" {
+  const value = input.trim()
+  if (/^(?:git@|ssh:\/\/)/i.test(value)) return "ssh"
+  if (/^https?:\/\//i.test(value)) return "https"
+  return fallback === "ssh" ? "ssh" : "https"
+}
+
 // ── Pinned chats (Paseo's workspace pins, shared with the desktop and phone apps) ──
 
 /** A pinned chat as the plugin gathers it from pasode's live stores (same rules as the session switcher). */
