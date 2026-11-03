@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test"
-import { ago, chatFooter, pinnedRows, inferRoot, insideProject, parseRepo, projectChats, projectRows, shortPath, validProjectName, type Project, cloneProtocol } from "./model"
+import { ago, chatFooter, pinnedRows, inferRoot, insideProject, parseRepo, projectChats, projectRows, shortPath, validProjectName, type Project, cloneProtocol, clonePath } from "./model"
 
 test("projectChats lists every workspace: live, archived, and empty ones, newest first", () => {
   const chats = projectChats(
@@ -141,4 +141,9 @@ test("cloneProtocol: ssh for git@ and ssh:// input, else the option, else https"
   expect(cloneProtocol("owner/repo", "ssh")).toBe("ssh")
   expect(cloneProtocol("https://github.com/owner/repo", "ssh")).toBe("https")
   expect(cloneProtocol("owner/repo", "ftp")).toBe("https")
+})
+
+test("clonePath: the repository's own folder inside the projects root", () => {
+  expect(clonePath("/srv/projects", "owner/repo")).toBe("/srv/projects/repo")
+  expect(clonePath("/srv/projects/", "owner/my.repo")).toBe("/srv/projects/my.repo")
 })

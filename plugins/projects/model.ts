@@ -143,6 +143,11 @@ export function cloneProtocol(input: string, fallback?: unknown): "https" | "ssh
   return fallback === "ssh" ? "ssh" : "https"
 }
 
+/** Where a clone goes: the daemon clones into exactly this folder, so it's the repository's name inside the root. */
+export function clonePath(root: string, repo: string) {
+  return `${root.replace(/\/+$/, "")}/${repo.split("/").pop()}`
+}
+
 // ── Pinned chats (Paseo's workspace pins, shared with the desktop and phone apps) ──
 
 /** A pinned chat as the plugin gathers it from pasode's live stores (same rules as the session switcher). */

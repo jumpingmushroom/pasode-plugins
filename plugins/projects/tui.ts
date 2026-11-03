@@ -8,7 +8,7 @@
 //   autoOpen  false stops the picker opening on launch outside a known project (default true).
 //   cloneProtocol  "https" (default) or "ssh" for owner/repo clones; a pasted URL keeps its own protocol.
 import type { PasodePlugin } from "@pasode/host"
-import { ago, chatFooter, cloneProtocol, pinnedRows, inferRoot, insideProject, parseRepo, projectChats, projectRows, shortPath, validProjectName, type ChatAgent, type ChatWorkspace, type Project, type ProjectRow } from "./model"
+import { ago, chatFooter, clonePath, cloneProtocol, pinnedRows, inferRoot, insideProject, parseRepo, projectChats, projectRows, shortPath, validProjectName, type ChatAgent, type ChatWorkspace, type Project, type ProjectRow } from "./model"
 
 type Pick =
   | { kind: "project"; row: ProjectRow }
@@ -189,7 +189,7 @@ export default {
       notify(`Cloning ${repo}…`)
       // The daemon needs a protocol for owner/repo; use the one the pasted address already has.
       const protocol = cloneProtocol(input, ctx.options.cloneProtocol)
-      const result = await daemon.cloneGithubProject({ repo, targetDirectory: root, cloneProtocol: protocol }).catch(showError)
+      const result = await daemon.cloneGithubProject({ repo, targetDirectory: clonePath(root, repo), cloneProtocol: protocol }).catch(showError)
       if (!result) return
       if (result.error || !result.project) return showError(result.error ?? `The daemon didn't clone ${repo}`)
       startIn(result.project.projectRootPath, result.project.projectDisplayName)
