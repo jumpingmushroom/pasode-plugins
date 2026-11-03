@@ -33,12 +33,14 @@ import path from "node:path"
 import { createSignal, For, onCleanup, Show } from "solid-js"
 import type { PasodePlugin } from "@pasode/host"
 import {
-  buttonPrompts, clickAction, parseEditable, recordUse, rowLayout, serializeEditable, SORT_MODES, sortPrompts, toggleTag,
+  buttonPrompts, clickAction, parseEditable, sendTarget, recordUse, rowLayout, serializeEditable, SORT_MODES, sortPrompts, toggleTag,
   type PromptSummary, type SortMode, type Usage,
 } from "./model"
 import { fillTemplate, parseVariables } from "./templates"
 
 const REFRESH_MS = 60_000
+/** Paseo's bypass modes, as pasode's own new sessions use them unless session.permissions is "prompt". */
+const BYPASS: Record<string, string> = { claude: "bypassPermissions", codex: "full-access" }
 const stateFile = path.join(process.env.XDG_STATE_HOME ?? path.join(os.homedir(), ".local", "state"), "pasode", "prompts.json")
 
 type Prompt = PromptSummary & { content: string; description: string; folder: string; revision: string }
@@ -100,10 +102,31 @@ export default {
 
     // ── Sending ──
 
-    /** Reads the prompt, asks for its variables, and sends it to the chat on screen. */
+    /** A new chat in `cwd` with `text` as its first message, with pasode's provider, model and permissions. */
+    async function startChat(cwd: string, text: string) {
+      const draft = ctx.state.draft()
+      let model = draft.model
+      if (!model) {
+        const models = (await ctx.paseo.api.providers.listModels(draft.provider)).models ?? []
+        model = (models.find((m) => m.isDefault) ?? models[0])?.id
+      }
+      if (!model) throw new Error(`No ${draft.provider} models available on the daemon`)
+      const mode = ctx.state.prefs.permissions !== "prompt" && BYPASS[draft.provider] ? { modeId: BYPASS[draft.provider] } : {}
+      const handle = await ctx.paseo.api.agents.create({
+        config: { provider: `${draft.provider}/${model}`, ...mode },
+        cwd,
+        prompt: text,
+        clientMessageId: crypto.randomUUID(),
+      })
+      // Like pasode's own new session: the picked folder is used up, and the chat opens.
+      ctx.state.setDraft({ ...ctx.state.draft(), cwd: undefined, worktree: undefined, fork: undefined })
+      ctx.state.navigate(handle.id)
+    }
+
+    /** Reads the prompt, asks for its variables, and sends it to the chat on screen, or starts a chat at home. */
     async function use(id: string) {
-      const agent = ctx.paseo.current()
-      if (!agent) return ctx.ui.toast("Open a chat first: prompts are sent to the chat on screen", "warning")
+      const target = sendTarget(ctx.paseo.current()?.id, ctx.state.draft().cwd)
+      if (target.kind === "none") return ctx.ui.toast("Pick a project first (ctrl+x p): on the home screen a prompt starts a new chat there", "warning")
       let prompt: Prompt
       try {
         prompt = await rpc<Prompt>("prompts.read", { id })
@@ -128,10 +151,13 @@ export default {
       } catch (error) {
         return ctx.state.showError(error)
       }
-      // The same send as pasode's own: mid-turn it steers the running turn instead of interrupting it.
-      const running = ctx.paseo.current()?.id === agent.id && ctx.paseo.current()?.status === "running"
       try {
-        await ctx.paseo.api.agents.ref(agent.id).send(text, { messageId: crypto.randomUUID(), ...(running ? { activeTurnBehavior: "steer" as const } : {}) })
+        if (target.kind === "new") await startChat(target.cwd, text)
+        else {
+          // The same send as pasode's own: mid-turn it steers the running turn instead of interrupting it.
+          const running = ctx.paseo.current()?.id === target.agentId && ctx.paseo.current()?.status === "running"
+          await ctx.paseo.api.agents.ref(target.agentId).send(text, { messageId: crypto.randomUUID(), ...(running ? { activeTurnBehavior: "steer" as const } : {}) })
+        }
         remember(id)
       } catch (error) {
         ctx.state.showError(error)

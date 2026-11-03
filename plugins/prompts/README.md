@@ -18,7 +18,7 @@ Choosing a prompt sends it to the chat on screen, as **Send to agent** does in t
 
 While the chat is idle or waiting on you, a click sends at once. While a turn runs, the first click turns the button into **click again**, and a second click within 4 seconds sends the prompt. Sending mid-turn steers the running turn, as typing a message does, so it never interrupts it.
 
-Prompts go to the chat on screen. On the home screen, pasode asks you to open a chat first.
+Prompts go to the chat on screen. On the home screen, after you pick a project (for example with the projects plugin's `ctrl+x p`), a prompt starts a new chat in that project with the prompt as its first message, using pasode's provider, model, and permissions. Without a picked project, pasode asks you to pick one first.
 
 ### Why `/p:approved` and not `/prompt approved`
 

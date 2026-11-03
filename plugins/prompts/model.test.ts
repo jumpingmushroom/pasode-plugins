@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test"
-import { ARM_MS, buttonPrompts, clickAction, normalizeId, resolvePrompt, type PromptSummary } from "./model"
+import { ARM_MS, sendTarget, buttonPrompts, clickAction, normalizeId, resolvePrompt, type PromptSummary } from "./model"
 import { fillTemplate, parseVariables } from "./templates"
 
 const library: PromptSummary[] = [
@@ -91,4 +91,11 @@ test("editor file: no header, or a --- that belongs to the content, keeps everyt
 test("toggleTag adds and removes case-insensitively", () => {
   expect(toggleTag(["review"], "quick")).toEqual(["review", "quick"])
   expect(toggleTag(["Quick", "review"], "quick")).toEqual(["review"])
+})
+
+test("sendTarget: the open chat, else a new chat in the picked project, else none", () => {
+  expect(sendTarget("agent1", "/srv/projects/foo")).toEqual({ kind: "chat", agentId: "agent1" })
+  expect(sendTarget(undefined, "/srv/projects/foo")).toEqual({ kind: "new", cwd: "/srv/projects/foo" })
+  expect(sendTarget(undefined, undefined)).toEqual({ kind: "none" })
+  expect(sendTarget(undefined, "  ")).toEqual({ kind: "none" })
 })

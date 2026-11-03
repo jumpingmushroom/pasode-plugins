@@ -120,3 +120,13 @@ export function toggleTag(tags: string[], tag: string): string[] {
   const has = tags.some((t) => t.toLowerCase() === tag.toLowerCase())
   return has ? tags.filter((t) => t.toLowerCase() !== tag.toLowerCase()) : [...tags, tag]
 }
+
+/**
+ * Where a prompt goes: the chat on screen; on the home screen, a new chat in the project picked there (pasode's draft
+ * folder, set by the projects plugin); with neither, nowhere, since pasode's own folder may not exist on the daemon.
+ */
+export function sendTarget(agentId: string | undefined, draftCwd: string | undefined): { kind: "chat"; agentId: string } | { kind: "new"; cwd: string } | { kind: "none" } {
+  if (agentId) return { kind: "chat", agentId }
+  if (draftCwd?.trim()) return { kind: "new", cwd: draftCwd }
+  return { kind: "none" }
+}
