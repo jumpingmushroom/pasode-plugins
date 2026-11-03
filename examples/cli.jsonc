@@ -39,6 +39,10 @@
       "prefix": "p:",
       "plugin": "paseo-prompt-manager"     // Prompt Manager's plugin id on the daemon
     }],
+    ["~/pasode-plugins/plugins/media", {
+      "keys": { "playPause": "<leader>f" },  // also "next" and "previous"; none by default
+      "cover": true                        // false hides the cover image
+    }],
     ["~/pasode-plugins/plugins/notes", {
       "projects": "Work/Projects",         // required: note ID or title path whose children are your project notes
       "folder": "Notes",                   // child of each project note that holds its notes; "" = the project note itself
