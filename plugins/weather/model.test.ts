@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test"
-import { coordsKey, nextFetchMs, parseForecast, parseWhereAmI, readOptions, summarize, symbolGlyph, weatherLines, type Hour } from "./model"
+import { coordsKey, nextFetchMs, parseForecast, parseWhereAmI, placeLine, placeName, readOptions, summarize, symbolGlyph, weatherLines, type Hour } from "./model"
 
 /** Hourly forecast in local time from `start`: one entry per item, [temperature, rain mm, symbol]. */
 function hours(start: Date, items: [number, number, string?][]): Hour[] {
@@ -122,4 +122,18 @@ test("nextFetchMs follows the API's Expires header, within 10 and 60 minutes", (
   expect(nextFetchMs("Wed, 04 Nov 2026 07:21:00 GMT", now)).toBe(10 * 60_000)
   expect(nextFetchMs("Wed, 04 Nov 2026 12:00:00 GMT", now)).toBe(60 * 60_000)
   expect(nextFetchMs(null, now)).toBe(30 * 60_000)
+})
+
+test("placeName picks the village, town or city from a reverse lookup, not the farm or quarter", () => {
+  expect(placeName({ farm: "Tømmereik", quarter: "Middelborg", village: "Torød", municipality: "Færder", county: "Vestfold" })).toBe("Torød")
+  expect(placeName({ quarter: "Vaterland", suburb: "Sentrum", municipality: "Oslo", city: "Oslo" })).toBe("Oslo")
+  expect(placeName({ hamlet: "Ytre", municipality: "Hitra" })).toBe("Ytre")
+  expect(placeName({ municipality: "Færder", county: "Vestfold" })).toBe("Færder")
+  expect(placeName({ country: "Norge" })).toBeUndefined()
+  expect(placeName(undefined)).toBeUndefined()
+})
+
+test("placeLine marks a place found by GeoClue", () => {
+  expect(placeLine("Torød", false)).toBe("Torød")
+  expect(placeLine("Tønsberg", true)).toBe("⌖ Tønsberg")
 })

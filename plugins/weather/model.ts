@@ -152,3 +152,15 @@ export function nextFetchMs(expires: string | null, now: Date) {
   if (Number.isNaN(at)) return 30 * MINUTE
   return Math.min(60 * MINUTE, Math.max(10 * MINUTE, at - now.getTime()))
 }
+
+/** The most useful name in an OpenStreetMap address: the village, town or city rather than a farm or quarter. */
+export function placeName(address: Record<string, string> | undefined) {
+  if (!address) return undefined
+  for (const field of ["village", "town", "city", "hamlet", "suburb", "municipality"]) if (address[field]) return address[field]
+  return undefined
+}
+
+/** The name line above the weather; ⌖ marks a place GeoClue found, as opposed to the one in the config. */
+export function placeLine(name: string, located: boolean) {
+  return located ? `⌖ ${name}` : name
+}

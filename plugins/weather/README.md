@@ -3,10 +3,12 @@
 Today's weather in pasode's sidebar, right under the [clock](../clock): the temperature now, today's high and low, and when it rains.
 
 ```
+           Torød
 ☁ 7°              ↑ 9°  ↓ 4°
 Regn 14–18, 3 mm
 ```
 
+- **Place:** the place the forecast is for. A ⌖ in front, as in "⌖ Tønsberg", means GeoClue found it. Without the ⌖, it's the place from your config.
 - **First line:** a weather symbol and the temperature now, with the high and low from now until midnight on the right.
 - **Second line:** the hours with rain and the total amount, such as "Regn 09–11, 15–18, 4 mm". A dry day reads **Opphold**. When all of it falls as snow, the line starts with **Snø**.
 - **From 21:00:** the high, low, and rain cover tomorrow, and the right side reads "I morgen: ↑ 9°  ↓ 4°".
@@ -36,7 +38,7 @@ system=false
 users=
 ```
 
-The plugin rounds the location to about a kilometre before it asks yr.
+The plugin rounds the location to about a kilometre before it asks yr. For a GeoClue location, or for `lat` and `lon`, it gets the place name from OpenStreetMap's reverse lookup, once per square kilometre, and caches it.
 
 ## Options
 

@@ -11,8 +11,8 @@ import os from "node:os"
 import path from "node:path"
 import { createMemo, createSignal, onCleanup, Show } from "solid-js"
 import type { PasodePlugin } from "@pasode/host"
-import { coordsKey, nextFetchMs, readOptions, summarize, weatherLines, type Coords, type Hour } from "./model"
-import { fetchForecast, geocode, locate } from "./sources"
+import { coordsKey, nextFetchMs, placeLine, readOptions, summarize, weatherLines, type Coords, type Hour } from "./model"
+import { fetchForecast, geocode, locate, placeAt } from "./sources"
 
 /** Sorts right after the clock (-1000), so the weather sits under the date. */
 const ORDER = -999
@@ -26,6 +26,8 @@ const stateFile = path.join(process.env.XDG_STATE_HOME ?? path.join(os.homedir()
 /** What survives restarts and is shared between pasode windows: looked-up places and the last forecast. */
 type Saved = {
   places?: Record<string, Coords>
+  /** Place names by rounded coordinates, from reverse lookups. */
+  names?: Record<string, string>
   forecast?: { key: string; hours: { time: string; temp: number; rain: number; symbol: string }[]; lastModified: string | null; expires: string | null; fetchedAt: number }
 }
 
@@ -58,22 +60,33 @@ export default {
     const [hours, setHours] = createSignal<Hour[]>([])
     const [fetchedAt, setFetchedAt] = createSignal(0)
     const [now, setNow] = createSignal(new Date())
+    const [place, setPlace] = createSignal<string>()
 
     // The current hour, the rest of the day and "stale" all move with the clock, so re-check every minute.
     const minute = setInterval(() => setNow(new Date()), 60_000)
 
-    async function where(): Promise<Coords | undefined> {
+    /** The name for coordinates that came without one, looked up once per kilometre square and cached. */
+    async function nameFor(coords: Coords) {
+      const key = coordsKey(coords)
+      const known = load().names?.[key]
+      if (known) return known
+      const name = await placeAt(coords).catch(() => undefined)
+      if (name) save((s) => (s.names = { ...s.names, [key]: name }))
+      return name
+    }
+
+    async function where(): Promise<{ coords: Coords; name?: string; located: boolean } | undefined> {
       if (options.follow) {
         const here = await locate()
-        if (here) return here
+        if (here) return { coords: here, name: await nameFor(here), located: true }
       }
-      if (options.coords) return options.coords
+      if (options.coords) return { coords: options.coords, name: await nameFor(options.coords), located: false }
       const known = load().places?.[options.place]
-      if (known) return known
+      if (known) return { coords: known, name: options.place, located: false }
       const found = await geocode(options.place)
       if (found) save((s) => (s.places = { ...s.places, [options.place]: found }))
       else ctx.ui.toast(`Weather: no place called "${options.place}" found. Set "place" or "lat" and "lon".`, "warning")
-      return found
+      return found && { coords: found, name: options.place, located: false }
     }
 
     function show(forecast: NonNullable<Saved["forecast"]>) {
@@ -89,8 +102,10 @@ export default {
 
     async function refresh() {
       try {
-        const coords = await where()
-        if (!coords) return later(RETRY_MS)
+        const spot = await where()
+        if (!spot) return later(RETRY_MS)
+        const { coords } = spot
+        setPlace(spot.name ? placeLine(spot.name, spot.located) : undefined)
         const key = coordsKey(coords)
         const cached = load().forecast
         const same = cached?.key === key ? cached : undefined
@@ -139,6 +154,13 @@ export default {
             const lines = () => weatherLines(s(), options.locale)
             return (
               <box flexDirection="column" flexShrink={0}>
+                <Show when={place()}>
+                  {(name) => (
+                    <box alignItems="center">
+                      <text fg={theme.textMuted} wrapMode="none" truncate>{name()}</text>
+                    </box>
+                  )}
+                </Show>
                 <box flexDirection="row">
                   <text wrapMode="none" flexShrink={0}>
                     <b>{lines().now}</b>

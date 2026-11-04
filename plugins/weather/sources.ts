@@ -1,7 +1,7 @@
 // Where the weather plugin gets its data: MET Norway's forecast API, OpenStreetMap's place search, and GeoClue.
 import { spawn } from "node:child_process"
 import { existsSync } from "node:fs"
-import { coordsKey, parseForecast, parseWhereAmI, type Coords, type Hour } from "./model"
+import { coordsKey, parseForecast, parseWhereAmI, placeName, type Coords, type Hour } from "./model"
 
 /** MET Norway and OpenStreetMap both require an identifying User-Agent. */
 const USER_AGENT = "pasode-plugins-weather/1.0 github.com/jumpingmushroom/pasode-plugins"
@@ -13,6 +13,15 @@ export async function geocode(place: string): Promise<Coords | undefined> {
   if (!response.ok) throw new Error(`place search answered ${response.status}`)
   const [hit] = (await response.json()) as { lat: string; lon: string }[]
   return hit ? { lat: Number(hit.lat), lon: Number(hit.lon) } : undefined
+}
+
+/** The name of the place at `coords` from OpenStreetMap's reverse lookup, such as "Torød", or undefined. */
+export async function placeAt(coords: Coords): Promise<string | undefined> {
+  const [lat, lon] = coordsKey(coords).split(",")
+  const url = `https://nominatim.openstreetmap.org/reverse?format=json&zoom=14&lat=${lat}&lon=${lon}`
+  const response = await fetch(url, { headers: { "User-Agent": USER_AGENT } })
+  if (!response.ok) throw new Error(`place lookup answered ${response.status}`)
+  return placeName(((await response.json()) as { address?: Record<string, string> }).address)
 }
 
 export type Fetched = { hours: Hour[]; lastModified: string | null; expires: string | null } | { unchanged: true; expires: string | null }
