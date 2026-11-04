@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test"
-import { coordsKey, nextFetchMs, parseForecast, parseWhereAmI, placeLine, placeName, readOptions, summarize, symbolGlyph, weatherLines, type Hour } from "./model"
+import { coordsKey, nextFetchMs, parseForecast, parseWhereAmI, placeLine, placeName, readOptions, sunLine, sunTimes, summarize, symbolGlyph, weatherLines, type Hour } from "./model"
 
 /** Hourly forecast in local time from `start`: one entry per item, [temperature, rain mm, symbol]. */
 function hours(start: Date, items: [number, number, string?][]): Hour[] {
@@ -136,4 +136,33 @@ test("placeName picks the village, town or city from a reverse lookup, not the f
 test("placeLine marks a place found by GeoClue", () => {
   expect(placeLine("Torød", false)).toBe("Torød")
   expect(placeLine("Tønsberg", true)).toBe("⌖ Tønsberg")
+})
+
+/** Within a minute of MET Norway's sunrise API, which rounds to the minute. */
+const near = (actual: Date | undefined, iso: string) => expect(Math.abs(actual!.getTime() - Date.parse(iso))).toBeLessThan(60_000)
+
+test("sunTimes matches MET Norway's sunrise and sunset", () => {
+  const torod = { lat: 59.18, lon: 10.44 }
+  const nov = sunTimes(new Date(2026, 10, 4), torod) as { rise: Date; set: Date }
+  near(nov.rise, "2026-11-04T07:44+01:00")
+  near(nov.set, "2026-11-04T16:18+01:00")
+  const jun = sunTimes(new Date(2026, 5, 21), torod) as { rise: Date; set: Date }
+  near(jun.rise, "2026-06-21T04:03+02:00")
+  near(jun.set, "2026-06-21T22:37+02:00")
+})
+
+test("sunTimes: no sunrise in Tromsø's polar night, no sunset in its midnight sun", () => {
+  const tromso = { lat: 69.65, lon: 18.96 }
+  expect(sunTimes(new Date(2026, 11, 21), tromso)).toEqual({ polar: "night" })
+  expect(sunTimes(new Date(2026, 5, 21), tromso)).toEqual({ polar: "day" })
+})
+
+test("sunLine in Norwegian and English", () => {
+  const sun = { rise: new Date(2026, 10, 4, 7, 44), set: new Date(2026, 10, 4, 16, 18) }
+  expect(sunLine(sun, "nb-NO")).toBe("☀ 07:44 – 16:18")
+  expect(sunLine(sun, "en-GB")).toBe("☀ 07:44 – 16:18")
+  expect(sunLine({ polar: "night" }, "nb-NO")).toBe("☾ Mørketid")
+  expect(sunLine({ polar: "day" }, "nb-NO")).toBe("☀ Midnattssol")
+  expect(sunLine({ polar: "night" }, "en-GB")).toBe("☾ Polar night")
+  expect(sunLine({ polar: "day" }, "en-GB")).toBe("☀ Midnight sun")
 })

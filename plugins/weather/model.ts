@@ -92,8 +92,8 @@ export function symbolGlyph(code: string) {
 }
 
 const WORDS = {
-  no: { rain: "Regn", snow: "Snø", dry: "Opphold", tomorrow: "I morgen" },
-  en: { rain: "Rain", snow: "Snow", dry: "Dry", tomorrow: "Tomorrow" },
+  no: { rain: "Regn", snow: "Snø", dry: "Opphold", tomorrow: "I morgen", polarNight: "Mørketid", midnightSun: "Midnattssol" },
+  en: { rain: "Rain", snow: "Snow", dry: "Dry", tomorrow: "Tomorrow", polarNight: "Polar night", midnightSun: "Midnight sun" },
 }
 
 /** Norwegian for nb, nn and no locales; English for everything else. */
@@ -163,4 +163,62 @@ export function placeName(address: Record<string, string> | undefined) {
 /** The name line above the weather; ⌖ marks a place GeoClue found, as opposed to the one in the config. */
 export function placeLine(name: string, located: boolean) {
   return located ? `⌖ ${name}` : name
+}
+
+/** Sunrise and sunset on a day, or which polar case it is when the sun doesn't rise or set. */
+export type Sun = { rise: Date; set: Date } | { polar: "night" | "day" }
+
+const RAD = Math.PI / 180
+const DAY_MS = 86_400_000
+
+/** The sun's declination (radians) and the equation of time (minutes) at `ms`, from NOAA's solar calculator. */
+function solar(ms: number) {
+  const t = (ms / DAY_MS + 2440587.5 - 2451545) / 36525
+  const meanLong = (280.46646 + t * (36000.76983 + t * 0.0003032)) % 360
+  const anomaly = 357.52911 + t * (35999.05029 - 0.0001537 * t)
+  const ecc = 0.016708634 - t * (0.000042037 + 0.0000001267 * t)
+  const m = anomaly * RAD
+  const centre = Math.sin(m) * (1.914602 - t * (0.004817 + 0.000014 * t)) + Math.sin(2 * m) * (0.019993 - 0.000101 * t) + Math.sin(3 * m) * 0.000289
+  const node = (125.04 - 1934.136 * t) * RAD
+  const apparent = (meanLong + centre - 0.00569 - 0.00478 * Math.sin(node)) * RAD
+  const obliquity = (23 + (26 + (21.448 - t * (46.815 + t * (0.00059 - t * 0.001813))) / 60) / 60 + 0.00256 * Math.cos(node)) * RAD
+  const y = Math.tan(obliquity / 2) ** 2
+  const l0 = meanLong * RAD
+  const equation =
+    y * Math.sin(2 * l0) - 2 * ecc * Math.sin(m) + 4 * ecc * y * Math.sin(m) * Math.cos(2 * l0) - 0.5 * y * y * Math.sin(4 * l0) - 1.25 * ecc * ecc * Math.sin(2 * m)
+  return { declination: Math.asin(Math.sin(obliquity) * Math.sin(apparent)), equation: (4 * equation) / RAD }
+}
+
+/** Sunrise (-1) or sunset (+1) in ms near `guess`, or the polar case when the sun stays down or up. */
+function sunEvent(guess: number, midnight: number, { lat, lon }: Coords, side: -1 | 1): number | "night" | "day" {
+  const { declination, equation } = solar(guess)
+  // 90.833° allows for the sun's radius and the air bending its light.
+  const cosHour = Math.cos(90.833 * RAD) / (Math.cos(lat * RAD) * Math.cos(declination)) - Math.tan(lat * RAD) * Math.tan(declination)
+  if (cosHour > 1) return "night"
+  if (cosHour < -1) return "day"
+  const minutes = 720 - 4 * lon - equation + side * 4 * (Math.acos(cosHour) / RAD)
+  return midnight + minutes * 60_000
+}
+
+/** Sunrise and sunset on the local calendar day of `day`, within about a minute of MET Norway's times. */
+export function sunTimes(day: Date, coords: Coords): Sun {
+  const midnight = Date.UTC(day.getFullYear(), day.getMonth(), day.getDate())
+  const times: number[] = []
+  for (const side of [-1, 1] as const) {
+    // Once from noon, then again at the first answer, since the sun's position moves during the day.
+    let at: number | "night" | "day" = midnight + 12 * 3_600_000
+    for (let pass = 0; pass < 2 && typeof at === "number"; pass++) at = sunEvent(at, midnight, coords, side)
+    if (typeof at !== "number") return { polar: at }
+    times.push(at)
+  }
+  return { rise: new Date(times[0]!), set: new Date(times[1]!) }
+}
+
+const hhmm = (at: Date) => `${hh(at.getHours())}:${hh(at.getMinutes())}`
+
+/** "☀ 07:44 – 16:18", or "☾ Mørketid" and "☀ Midnattssol" for days without a sunrise or a sunset. */
+export function sunLine(sun: Sun, locale: string) {
+  const w = words(locale)
+  if ("polar" in sun) return sun.polar === "night" ? `☾ ${w.polarNight}` : `☀ ${w.midnightSun}`
+  return `☀ ${hhmm(sun.rise)} – ${hhmm(sun.set)}`
 }

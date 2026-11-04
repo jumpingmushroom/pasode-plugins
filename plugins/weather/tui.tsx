@@ -1,5 +1,5 @@
-// Today's weather in pasode's sidebar, right under the clock: the temperature now with today's high and low,
-// and when it rains. Forecasts come from yr (MET Norway); the place follows the laptop through GeoClue when it can.
+// Today's weather in pasode's sidebar, right under the clock: the place with sunrise and sunset, the temperature
+// now with today's high and low, and when it rains. Forecasts come from yr (MET Norway); the place follows the laptop through GeoClue when it can.
 //
 // Options (cli.json: ["~/pasode-plugins/plugins/weather", { "place": "Torød" }]):
 //   place   a place name, looked up once on OpenStreetMap (default "Oslo").
@@ -11,7 +11,7 @@ import os from "node:os"
 import path from "node:path"
 import { createMemo, createSignal, onCleanup, Show } from "solid-js"
 import type { PasodePlugin } from "@pasode/host"
-import { coordsKey, nextFetchMs, placeLine, readOptions, summarize, weatherLines, type Coords, type Hour } from "./model"
+import { coordsKey, nextFetchMs, placeLine, readOptions, summarize, sunLine, sunTimes, weatherLines, type Coords, type Hour } from "./model"
 import { fetchForecast, geocode, locate, placeAt } from "./sources"
 
 /** Sorts right after the clock (-1000), so the weather sits under the date. */
@@ -61,6 +61,7 @@ export default {
     const [fetchedAt, setFetchedAt] = createSignal(0)
     const [now, setNow] = createSignal(new Date())
     const [place, setPlace] = createSignal<string>()
+    const [coords, setCoords] = createSignal<Coords>()
 
     // The current hour, the rest of the day and "stale" all move with the clock, so re-check every minute.
     const minute = setInterval(() => setNow(new Date()), 60_000)
@@ -106,6 +107,7 @@ export default {
         if (!spot) return later(RETRY_MS)
         const { coords } = spot
         setPlace(spot.name ? placeLine(spot.name, spot.located) : undefined)
+        setCoords(coords)
         const key = coordsKey(coords)
         const cached = load().forecast
         const same = cached?.key === key ? cached : undefined
@@ -142,6 +144,14 @@ export default {
     })
 
     const summary = createMemo(() => summarize(hours(), now()))
+    // Tomorrow's sunrise and sunset once the rest of the section has moved to tomorrow.
+    const sun = createMemo(() => {
+      const at = coords()
+      if (!at) return undefined
+      const day = new Date(now())
+      if (summary()?.tomorrow) day.setDate(day.getDate() + 1)
+      return sunLine(sunTimes(day, at), options.locale)
+    })
     const stale = () => {
       const at = fetchedAt()
       return at && now().getTime() - at > STALE_MS ? new Date(at).toLocaleTimeString(options.locale, { hour: "2-digit", minute: "2-digit" }) : undefined
@@ -154,13 +164,11 @@ export default {
             const lines = () => weatherLines(s(), options.locale)
             return (
               <box flexDirection="column" flexShrink={0}>
-                <Show when={place()}>
-                  {(name) => (
-                    <box alignItems="center">
-                      <text fg={theme.textMuted} wrapMode="none" truncate>{name()}</text>
-                    </box>
-                  )}
-                </Show>
+                <box flexDirection="row" gap={1}>
+                  <text fg={theme.textMuted} wrapMode="none" truncate flexShrink={1} minWidth={0}>{place() ?? ""}</text>
+                  <box flexGrow={1} />
+                  <Show when={sun()}>{(line) => <text fg={theme.textMuted} wrapMode="none" flexShrink={0}>{line()}</text>}</Show>
+                </box>
                 <box flexDirection="row">
                   <text wrapMode="none" flexShrink={0}>
                     <b>{lines().now}</b>

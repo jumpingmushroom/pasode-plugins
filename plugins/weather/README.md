@@ -1,19 +1,19 @@
 # weather
 
-Today's weather in pasode's sidebar, right under the [clock](../clock): the temperature now, today's high and low, and when it rains.
+Today's weather in pasode's sidebar, right under the [clock](../clock): the place with sunrise and sunset, the temperature now, today's high and low, and when it rains.
 
 ```
-           Torød
+Torød         ☀ 07:44 – 16:18
 ☁ 7°              ↑ 9°  ↓ 4°
 Regn 14–18, 3 mm
 ```
 
-- **Place:** the place the forecast is for. A ⌖ in front, as in "⌖ Tønsberg", means GeoClue found it. Without the ⌖, it's the place from your config.
+- **Place line:** the place the forecast is for, with sunrise and sunset on the right. A ⌖ in front, as in "⌖ Tønsberg", means GeoClue found the place. Without the ⌖, it's the place from your config. On days the sun doesn't rise or set, the right side reads **☾ Mørketid** (polar night) or **☀ Midnattssol** (midnight sun).
 - **First line:** a weather symbol and the temperature now, with the high and low from now until midnight on the right.
 - **Second line:** the hours with rain and the total amount, such as "Regn 09–11, 15–18, 4 mm". A dry day reads **Opphold**. When all of it falls as snow, the line starts with **Snø**.
-- **From 21:00:** the high, low, and rain cover tomorrow, and the right side reads "I morgen: ↑ 9°  ↓ 4°".
+- **From 21:00:** the sun times, high, low, and rain cover tomorrow, and the right side reads "I morgen: ↑ 9°  ↓ 4°".
 
-The symbols are ☀ (clear), ☾ (clear night), ☁ (cloudy), ≡ (fog), ☂ (rain or sleet), ❄ (snow), and ϟ (thunder). An hour counts as rainy from 0.1 mm.
+The plugin calculates sunrise and sunset itself, within a minute of yr's times. The symbols are ☀ (clear), ☾ (clear night), ☁ (cloudy), ≡ (fog), ☂ (rain or sleet), ❄ (snow), and ϟ (thunder). An hour counts as rainy from 0.1 mm.
 
 Like the rest of the sidebar, the weather shows in chats, not on the home screen. It hides until the first forecast arrives.
 
