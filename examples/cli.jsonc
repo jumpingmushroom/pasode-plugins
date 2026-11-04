@@ -45,6 +45,12 @@
       "hour12": false,                     // 12-hour clock with AM/PM
       "locale": "nb-NO"                    // date language, e.g. "en-GB"
     }],
+    ["~/pasode-plugins/plugins/weather", {
+      "place": "Oslo",                     // place name, looked up once on OpenStreetMap
+      // "lat": 59.91, "lon": 10.75,       // coordinates instead of a place name
+      "follow": true,                      // use GeoClue's location when GeoClue is installed
+      "locale": "nb-NO"                    // Norwegian text; e.g. "en-GB" for English
+    }],
     ["~/pasode-plugins/plugins/media", {
       "keys": { "playPause": "<leader>f" },  // also "next" and "previous"; none by default
       "cover": true                        // false hides the cover image

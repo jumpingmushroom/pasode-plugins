@@ -9,6 +9,7 @@ Plugins for [pasode](https://github.com/ragokan/pasode), the terminal client for
 | [attention](plugins/attention) | A line that appears when other chats need you, wait on an automatic resume, or run subagents, with a key to jump to the next one. |
 | [prompts](plugins/prompts) | Your Prompt Manager library: clickable buttons at the top of each chat, a picker that also creates and edits prompts in your editor, and a `/p:<name>` command per prompt, with variables filled in before sending. |
 | [clock](plugins/clock) | A big clock at the top of the sidebar, in block digits 3 lines tall, with the date below. |
+| [weather](plugins/weather) | Today's weather from yr under the clock: the temperature now, the high and low, and when it rains. Follows the laptop with GeoClue. |
 | [media](plugins/media) | A media player in the sidebar for what your browser or music app is playing: cover, progress bar, and play/pause, next, and previous. |
 | [notes](plugins/notes) | Per-project notes in Trilium: jot down a fix or feature idea with its prompt, then start a chat from it in one key. |
 | [sound](plugins/sound) | A sound when a chat you have open finishes, asks a question, waits for a permission, or fails, plus a terminal bell for window urgency. |
