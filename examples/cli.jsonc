@@ -16,6 +16,7 @@
       // "hostDisks": ["/config", "/"],    // default: only the fullest disk
       // "hostLabel": "nas"                // default: "Unraid" on Unraid, else the daemon's hostname
     }],
+    "~/pasode-plugins/plugins/pinned-tabs", // no options; set "Session tabs" off in pasode's settings
     ["~/pasode-plugins/plugins/attention", {
       "session": true,                     // show the line in chats
       "home": true,                        // short form on the home screen

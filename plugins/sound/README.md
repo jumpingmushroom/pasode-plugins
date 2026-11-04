@@ -13,7 +13,7 @@ Linux sounds come from the freedesktop sound theme (`/usr/share/sounds/freedeskt
 
 ## Which chats make a sound
 
-- Only chats open as tabs in pasode. Scheduled runs and chats opened only in the desktop or phone app stay quiet. To silence a chat, close its tab with `/close-tab`.
+- Only chats open as tabs in pasode, and chats you pinned in Paseo. Scheduled runs and chats opened only in the desktop or phone app stay quiet. To silence a chat, close its tab with `/close-tab`, or unpin it.
 - The chat on screen stays quiet while the terminal has focus.
 - The daemon sends some events twice, so one chat and event sounds at most once in 3 seconds. Several chats finishing together play at most one sound per second.
 

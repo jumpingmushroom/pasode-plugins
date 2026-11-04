@@ -1,8 +1,8 @@
-// Audible alerts for pasode: when a chat you have open as a tab finishes, fails, asks a question
+// Audible alerts for pasode: when a chat you have open as a tab (or pinned) finishes, fails, asks a question
 // (or a plan to approve), or waits for a permission, play that kind's sound (pw-play, falling back to paplay) and, while the terminal is in the background, ring the
 // terminal bell so the window manager marks the window urgent (kitty: window_alert_on_bell; the tab shows its bell).
 // Events are the daemon's attention events, heard whichever client the daemon picks to notify. Chats that aren't
-// tabs (scheduled watcher runs, chats only opened on the desktop or phone) stay quiet, as does the chat on screen
+// tabs or pinned (scheduled watcher runs, chats only opened on the desktop or phone) stay quiet, as does the chat on screen
 // while the terminal has focus.
 //
 // Commands: /mute, /unmute (remembered), /sound-test (plays each kind in turn).
@@ -18,7 +18,7 @@ import { mkdirSync, readFileSync, writeFileSync, writeSync } from "node:fs"
 import os from "node:os"
 import path from "node:path"
 import type { PasodePlugin } from "@pasode/host"
-import { createGate, KINDS, kindOf, platformDefaults, playerArgs, tabsFrom, volumeArg, wants, type Kind, type Reason } from "./model"
+import { createGate, KINDS, kindOf, pinnedFrom, platformDefaults, playerArgs, tabsFrom, volumeArg, wants, type Kind, type Reason } from "./model"
 
 const stateDir = path.join(process.env.XDG_STATE_HOME ?? path.join(os.homedir(), ".local", "state"), "pasode")
 const kvFile = path.join(stateDir, "kv.json") // pasode writes its open tabs here on every change
@@ -84,7 +84,7 @@ export default {
         kinds = pendingKinds(event.agentId)
       }
       const kind = kindOf(reason, kinds)
-      const situation = { agentId: event.agentId, kind, tabs: tabsFrom(readText(kvFile)), currentId: ctx.paseo.agentId(), focused, muted, enabled }
+      const situation = { agentId: event.agentId, kind, tabs: new Set([...tabsFrom(readText(kvFile)), ...pinnedFrom(ctx.paseo.agents, ctx.paseo.workspacePins)]), currentId: ctx.paseo.agentId(), focused, muted, enabled }
       if (!wants(situation)) return
       // Deduped on the daemon's reason, not the kind: the two copies of an event may see different request details.
       const verdict = gate.check(event.agentId, reason, Date.now())

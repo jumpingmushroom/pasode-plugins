@@ -61,10 +61,18 @@ export function tabsFrom(kvText: string | undefined): Set<string> {
   }
 }
 
+/** Chats in workspaces pinned in Paseo: they count as tabs, so the pinned-tabs plugin's bar makes sounds too. */
+export function pinnedFrom(
+  agents: Record<string, { id: string; workspaceId?: string | null; archivedAt?: string | null } | undefined>,
+  pins: Record<string, string | null | undefined>,
+): Set<string> {
+  return new Set(Object.values(agents).filter((agent) => !!agent && !agent.archivedAt && !!agent.workspaceId && !!pins[agent.workspaceId]).map((agent) => agent!.id))
+}
+
 export type Situation = {
   agentId: string
   kind: Kind
-  /** Sessions open as tabs in pasode: only these make a sound. */
+  /** Sessions open as tabs in pasode, and pinned chats: only these make a sound. */
   tabs: Set<string>
   /** The session on screen, and whether the terminal has focus: that one is quiet while you're looking at it. */
   currentId?: string

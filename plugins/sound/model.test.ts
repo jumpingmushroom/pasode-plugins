@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test"
-import { createGate, DEDUPE_MS, kindOf, MIN_GAP_MS, platformDefaults, playerArgs, tabsFrom, volumeArg, wants, type Situation } from "./model"
+import { createGate, DEDUPE_MS, kindOf, MIN_GAP_MS, pinnedFrom, platformDefaults, playerArgs, tabsFrom, volumeArg, wants, type Situation } from "./model"
 
 const base: Situation = {
   agentId: "a",
@@ -16,6 +16,12 @@ test("tabsFrom reads pasode's kv.json tabs; anything odd means none", () => {
   expect(tabsFrom('{"prefs":{}}').size).toBe(0)
   expect(tabsFrom("not json").size).toBe(0)
   expect(tabsFrom(undefined).size).toBe(0)
+})
+
+test("pinnedFrom lists live chats in pinned workspaces, which count as tabs", () => {
+  const agents = { a: { id: "a", workspaceId: "w1" }, b: { id: "b", workspaceId: "w2" }, c: { id: "c", workspaceId: "w1", archivedAt: "2026-11-01T00:00:00Z" }, d: { id: "d" } }
+  expect([...pinnedFrom(agents, { w1: "2026-11-01T00:00:00Z", w2: null })]).toEqual(["a"])
+  expect(pinnedFrom(agents, {}).size).toBe(0)
 })
 
 test("only chats open as tabs make a sound", () => {
