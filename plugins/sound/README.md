@@ -4,7 +4,7 @@ Plays a sound when a chat you have open finishes, asks a question, waits for a p
 
 | Event | Linux sound | macOS sound |
 | --- | --- | --- |
-| Finished | `complete.oga` | `Glass.aiff` |
+| Finished | `message.oga` | `Glass.aiff` |
 | Question, or a plan to approve | `window-question.oga` | `Purr.aiff` |
 | Permission (a tool or mode request) | `message-new-instant.oga` | `Ping.aiff` |
 | Error | `dialog-error.oga` | `Basso.aiff` |

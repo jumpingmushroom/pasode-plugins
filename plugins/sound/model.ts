@@ -8,7 +8,7 @@ export const KINDS: Kind[] = ["finished", "question", "permission", "error"]
 
 /** Linux: the freedesktop sound theme (package sound-theme-freedesktop on most distributions). */
 export const DEFAULT_SOUNDS: Record<Kind, string> = {
-  finished: "/usr/share/sounds/freedesktop/stereo/complete.oga",
+  finished: "/usr/share/sounds/freedesktop/stereo/message.oga",
   question: "/usr/share/sounds/freedesktop/stereo/window-question.oga",
   permission: "/usr/share/sounds/freedesktop/stereo/message-new-instant.oga",
   error: "/usr/share/sounds/freedesktop/stereo/dialog-error.oga",

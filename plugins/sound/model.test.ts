@@ -64,7 +64,7 @@ test("kindOf: questions and plans to approve are questions; tool, mode and other
 
 test("platform defaults: freedesktop sounds with pw-play then paplay; macOS system sounds with afplay", () => {
   expect(platformDefaults("linux").players).toEqual(["pw-play", "paplay"])
-  expect(platformDefaults("linux").sounds.finished).toEndWith("complete.oga")
+  expect(platformDefaults("linux").sounds.finished).toEndWith("message.oga")
   expect(platformDefaults("darwin").players).toEqual(["afplay"])
   expect(platformDefaults("darwin").sounds.error).toBe("/System/Library/Sounds/Basso.aiff")
 })
