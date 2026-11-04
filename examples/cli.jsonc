@@ -39,6 +39,12 @@
       "prefix": "p:",
       "plugin": "paseo-prompt-manager"     // Prompt Manager's plugin id on the daemon
     }],
+    ["~/pasode-plugins/plugins/clock", {
+      "seconds": false,                    // small seconds after the minutes
+      "date": true,                        // the date below the clock
+      "hour12": false,                     // 12-hour clock with AM/PM
+      "locale": "nb-NO"                    // date language, e.g. "en-GB"
+    }],
     ["~/pasode-plugins/plugins/media", {
       "keys": { "playPause": "<leader>f" },  // also "next" and "previous"; none by default
       "cover": true                        // false hides the cover image
